@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin - Add New Product</title>
+<!-- Google Fonts: Work Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec6d13",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#221810",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#2d241d",
+                        "border-light": "#e6e0db",
+                        "border-dark": "#443a33",
+                        "text-main": "#181411",
+                        "text-muted": "#897261",
+                    },
+                    fontFamily: {
+                        "display": ["Work Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for better look in sidebars */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #dcdcdc;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #c0c0c0;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 font-display min-h-screen flex overflow-hidden">
+<!-- Sidebar -->
+<aside class="w-64 flex-shrink-0 bg-surface-light dark:bg-surface-dark border-r border-border-light dark:border-border-dark flex flex-col h-screen transition-colors duration-200">
+<div class="p-6 flex items-center gap-3">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="Abstract terracotta geometric logo" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBpJ7frqinrlvOu-uwIwb0eEUe_VFCf8pX0ZzuvX7aIbqI44B6hj-cIAHkD-4hhk8iOLU1FxAPI1-smECaZFPOf1vSakNui0cfIYNA0RvXNAH8aJ6krDuq9im4cOV3usR8kHN-dfBCFFC0B_LZuTKtAC71BKkkeGis2fSjJ2ifxuvoVMLymix90as_RnvUITiu1qwCqBWcO1UTYt48L-HJUVE333yCMtlWSlCaKxE0z6ifbXR3-G6kJQor2phFgvv5itHnEle-DgSU");'></div>
+<div class="flex flex-col">
+<h1 class="text-text-main dark:text-white text-base font-bold leading-normal">Clay &amp; Co.</h1>
+<p class="text-text-muted text-xs font-normal leading-normal">Store Admin</p>
+</div>
+</div>
+<nav class="flex-1 overflow-y-auto px-4 py-2 space-y-1">
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-text-main dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group" href="#">
+<span class="material-symbols-outlined text-text-muted group-hover:text-primary transition-colors">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<!-- Active State -->
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg bg-primary/10 text-primary dark:text-primary" href="#">
+<span class="material-symbols-outlined icon-filled">shopping_bag</span>
+<span class="text-sm font-bold">Products</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-text-main dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group" href="#">
+<span class="material-symbols-outlined text-text-muted group-hover:text-primary transition-colors">package_2</span>
+<span class="text-sm font-medium">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-text-main dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group" href="#">
+<span class="material-symbols-outlined text-text-muted group-hover:text-primary transition-colors">group</span>
+<span class="text-sm font-medium">Customers</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-text-main dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group" href="#">
+<span class="material-symbols-outlined text-text-muted group-hover:text-primary transition-colors">bar_chart</span>
+<span class="text-sm font-medium">Analytics</span>
+</a>
+</nav>
+<div class="p-4 border-t border-border-light dark:border-border-dark space-y-1">
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-text-main dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group" href="#">
+<span class="material-symbols-outlined text-text-muted group-hover:text-primary transition-colors">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+<div class="flex items-center gap-3 px-3 py-3 mt-2">
+<div class="size-8 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+<img alt="User avatar" class="object-cover size-full" data-alt="User profile picture of a man smiling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCp4C4e3qfYCmsKLu8LDv-vvf8-r5oNvEi0f1rEvnk7-LhATweTAZ7A3EvxsPedx6yTAP1lIrOIiOeEKf7JFTdLWqbYADBY7j8jSj9XOQ5AyVRqSzEo-j2x_wpGwXYvJMRhWWOfLRE6HMTceZx7voFYsVXAH1Dze_pobAP26JtMX6OlL7UzICSo7Unzv1-OrJwLI7OUpW4yxH5x4roFqaEcMsA6pjeeXH6kk3NaZ-1u_PjGgiYURvNO4YLPQt5BygojkWqbEEM5xrc"/>
+</div>
+<div class="flex flex-col">
+<p class="text-sm font-medium text-text-main dark:text-white">Alex Morgan</p>
+<p class="text-xs text-text-muted">admin@clayco.com</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col h-screen overflow-hidden">
+<!-- Top Bar / Breadcrumbs / Actions -->
+<header class="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark px-8 py-5 flex items-center justify-between shrink-0 z-10">
+<div class="flex flex-col gap-1">
+<nav class="flex items-center gap-2 text-sm text-text-muted">
+<a class="hover:text-primary transition-colors" href="#">Dashboard</a>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<a class="hover:text-primary transition-colors" href="#">Products</a>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-text-main dark:text-gray-200 font-medium">Add New Product</span>
+</nav>
+<h1 class="text-2xl font-bold text-text-main dark:text-white tracking-tight">Add New Product</h1>
+</div>
+<div class="flex items-center gap-3">
+<p class="text-text-muted text-sm mr-2 hidden sm:block">Last saved 2 min ago</p>
+<button class="px-5 py-2.5 rounded-lg border border-border-light dark:border-border-dark text-text-main dark:text-gray-200 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">draft</span>
+                    Save Draft
+                </button>
+<button class="px-5 py-2.5 rounded-lg bg-primary text-white font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-primary/30 flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">publish</span>
+                    Publish Product
+                </button>
+</div>
+</header>
+<!-- Scrollable Form Area -->
+<div class="flex-1 overflow-y-auto p-8 bg-background-light dark:bg-background-dark">
+<div class="max-w-7xl mx-auto">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Left Column (Main Form) -->
+<div class="lg:col-span-2 space-y-8">
+<!-- General Info Section -->
+<section class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-border-light dark:border-border-dark">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">feed</span>
+<h2 class="text-lg font-bold text-text-main dark:text-white">General Information</h2>
+</div>
+<div class="space-y-6">
+<label class="block">
+<span class="text-text-main dark:text-gray-300 font-medium text-sm mb-2 block">Product Name</span>
+<input class="w-full rounded-lg border-border-light dark:border-border-dark bg-white dark:bg-surface-dark focus:border-primary focus:ring-primary dark:text-white dark:focus:border-primary h-12 px-4 placeholder:text-text-muted transition-colors" placeholder="e.g. Handcrafted Ceramic Vase" type="text"/>
+</label>
+<label class="block">
+<span class="text-text-main dark:text-gray-300 font-medium text-sm mb-2 block">Description</span>
+<div class="relative">
+<!-- Fake Toolbar -->
+<div class="flex items-center gap-2 p-2 border border-b-0 border-border-light dark:border-border-dark rounded-t-lg bg-gray-50 dark:bg-[#362b22]">
+<button class="p-1 hover:bg-gray-200 dark:hover:bg-white/10 rounded text-text-muted"><span class="material-symbols-outlined text-[18px]">format_bold</span></button>
+<button class="p-1 hover:bg-gray-200 dark:hover:bg-white/10 rounded text-text-muted"><span class="material-symbols-outlined text-[18px]">format_italic</span></button>
+<button class="p-1 hover:bg-gray-200 dark:hover:bg-white/10 rounded text-text-muted"><span class="material-symbols-outlined text-[18px]">format_underlined</span></button>
+<div class="w-px h-4 bg-border-light dark:bg-border-dark mx-1"></div>
+<button class="p-1 hover:bg-gray-200 dark:hover:bg-white/10 rounded text-text-muted"><span class="material-symbols-outlined text-[18px]">format_list_bulleted</span></button>
+<button class="p-1 hover:bg-gray-200 dark:hover:bg-white/10 rounded text-text-muted"><span class="material-symbols-outlined text-[18px]">link</span></button>
+</div>
+<textarea class="w-full rounded-b-lg border-border-light dark:border-border-dark bg-white dark:bg-surface-dark focus:border-primary focus:ring-primary dark:text-white dark:focus:border-primary min-h-[160px] p-4 placeholder:text-text-muted resize-y transition-colors" placeholder="Describe the product features, materials, and care instructions..."></textarea>
+</div>
+<p class="text-xs text-text-muted mt-2 text-right">0/500 characters</p>
+</label>
+</div>
+</section>
+<!-- Media Section -->
+<section class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-border-light dark:border-border-dark">
+<div class="flex items-center justify-between mb-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">imagesmode</span>
+<h2 class="text-lg font-bold text-text-main dark:text-white">Media</h2>
+</div>
+<span class="text-xs bg-primary/10 text-primary px-2 py-1 rounded font-medium">Auto-saved</span>
+</div>
+<div class="border-2 border-dashed border-primary/30 rounded-xl bg-background-light dark:bg-background-dark p-8 text-center hover:bg-primary/5 dark:hover:bg-primary/5 transition-colors cursor-pointer group">
+<div class="bg-white dark:bg-surface-dark rounded-full size-12 flex items-center justify-center mx-auto mb-3 shadow-sm group-hover:scale-110 transition-transform duration-200">
+<span class="material-symbols-outlined text-primary text-2xl">cloud_upload</span>
+</div>
+<p class="text-text-main dark:text-white font-medium mb-1">Click to upload or drag and drop</p>
+<p class="text-text-muted text-sm">SVG, PNG, JPG or GIF (max. 800x400px)</p>
+</div>
+<!-- Thumbnails Grid -->
+<div class="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+<div class="group relative aspect-square rounded-lg overflow-hidden border border-border-light dark:border-border-dark bg-gray-100 dark:bg-gray-800">
+<img alt="Ceramic vase white background" class="object-cover w-full h-full" data-alt="White ceramic vase on a beige background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIdaLE_ajItJJCPEMMa3jggLxb3UOp6zN-Tq6zvt5IqloP2AYFzDelzGzX5OMykzKQGxuLshTFNlQKwNd9ZwzascGLT3DWAe8UrtHPjJWD7YrUp8_QyojIpIUVc_ZOb9XkoOB7wPtPxGpr7WwkSXYiqvTkL5TpOyr5nfuS-_rc0HihJsdL3Hag2nwyxRjkhTjbY3gY-ArZZIjeds41Wzf9ZG5lhjtT45KdSATuIfuMrSv97zPuBORYGoqEVVaivo9PT0Pq3bvfGcw"/>
+<div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+<button class="bg-white/20 hover:bg-white/40 p-1.5 rounded-full text-white backdrop-blur-sm"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+<button class="bg-red-500/80 hover:bg-red-600 p-1.5 rounded-full text-white backdrop-blur-sm"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+</div>
+<div class="absolute top-2 left-2 bg-white/90 dark:bg-black/60 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-text-main dark:text-white shadow-sm backdrop-blur-md">Main</div>
+</div>
+<div class="group relative aspect-square rounded-lg overflow-hidden border border-border-light dark:border-border-dark bg-gray-100 dark:bg-gray-800">
+<img alt="Detail shot of ceramic texture" class="object-cover w-full h-full" data-alt="Close up texture of ceramic vase" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA37ezGLj7_VKx1h5fOnjbCdWvLQ1W-U4a5QToC0tNU4Pe5m_oY1km9ZRknV1KKQm0jQva9BCU-XQlkF3ba883Lwu55yQ9oENxst2LQWLvYl3-ILOA2wJxDZYfYjRXCpLvteFbWbImPgnklEZiNBOIrb9MT3ykdpLLvOYv9JJyBIoLtLDq6cOzXv42SaQW35gXVTz-B55rJbISi2tIoJ4wNFrjVkRIpzQhh8gZKiJKOCWY-JlbzsPiUMdcrnUuGFW2pICODgwvPgmQ"/>
+<div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+<button class="bg-white/20 hover:bg-white/40 p-1.5 rounded-full text-white backdrop-blur-sm"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+<button class="bg-red-500/80 hover:bg-red-600 p-1.5 rounded-full text-white backdrop-blur-sm"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+</div>
+</div>
+<!-- Loading state placeholder -->
+<div class="relative aspect-square rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800/50 flex flex-col items-center justify-center animate-pulse">
+<span class="material-symbols-outlined text-text-muted text-3xl mb-2 opacity-50">image</span>
+<span class="text-xs text-text-muted">Uploading...</span>
+<div class="absolute bottom-0 left-0 h-1 bg-primary w-2/3"></div>
+</div>
+</div>
+</section>
+<!-- Pricing Section -->
+<section class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-border-light dark:border-border-dark">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">payments</span>
+<h2 class="text-lg font-bold text-text-main dark:text-white">Pricing &amp; Inventory</h2>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+<label class="block">
+<span class="text-text-main dark:text-gray-300 font-medium text-sm mb-2 block">Base Price</span>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="text-text-muted">$</span>
+</div>
+<input class="w-full rounded-lg border-border-light dark:border-border-dark bg-white dark:bg-surface-dark focus:border-primary focus:ring-primary dark:text-white dark:focus:border-primary h-12 pl-8 pr-4 placeholder:text-text-muted transition-colors" placeholder="0.00" type="number"/>
+</div>
+</label>
+<label class="block">
+<span class="text-text-main dark:text-gray-300 font-medium text-sm mb-2 block">Discount Price <span class="text-text-muted font-normal text-xs ml-1">(Optional)</span></span>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="text-text-muted">$</span>
+</div>
+<input class="w-full rounded-lg border-border-light dark:border-border-dark bg-white dark:bg-surface-dark focus:border-primary focus:ring-primary dark:text-white dark:focus:border-primary h-12 pl-8 pr-4 placeholder:text-text-muted transition-colors" placeholder="0.00" type="number"/>
+</div>
+</label>
+<label class="block">
+<span class="text-text-main dark:text-gray-300 font-medium text-sm mb-2 block">SKU</span>
+<input class="w-full rounded-lg border-border-light dark:border-border-dark bg-white dark:bg-surface-dark focus:border-primary focus:ring-primary dark:text-white dark:focus:border-primary h-12 px-4 placeholder:text-text-muted transition-colors" placeholder="e.g. CER-VASE-001" type="text"/>
+</label>
+<label class="block">
+<span class="text-text-main dark:text-gray-300 font-medium text-sm mb-2 block">Stock Quantity</span>
+<input class="w-full rounded-lg border-border-light dark:border-border-dark bg-white dark:bg-surface-dark focus:border-primary focus:ring-primary dark:text-white dark:focus:border-primary h-12 px-4 placeholder:text-text-muted transition-colors" placeholder="0" type="number"/>
+</label>
+</div>
+</section>
+</div>
+<!-- Right Column (Organization) -->
+<div class="lg:col-span-1 space-y-8">
+<!-- Organization Card -->
+<section class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-border-light dark:border-border-dark sticky top-0">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">category</span>
+<h2 class="text-lg font-bold text-text-main dark:text-white">Organization</h2>
+</div>
+<div class="space-y-6">
+<div>
+<span class="text-text-main dark:text-gray-300 font-medium text-sm mb-3 block">Status</span>
+<div class="flex items-center justify-between p-3 border border-border-light dark:border-border-dark rounded-lg bg-gray-50 dark:bg-background-dark">
+<span class="text-sm font-medium text-green-600 dark:text-green-400 flex items-center gap-2">
+<span class="size-2 rounded-full bg-green-500 animate-pulse"></span>
+                                            Active
+                                        </span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/40 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+<label class="block">
+<span class="text-text-main dark:text-gray-300 font-medium text-sm mb-2 block">Category</span>
+<select class="w-full rounded-lg border-border-light dark:border-border-dark bg-white dark:bg-surface-dark focus:border-primary focus:ring-primary dark:text-white dark:focus:border-primary h-12 px-4 transition-colors">
+<option>Home Decor</option>
+<option>Ceramics</option>
+<option>Kitchen</option>
+<option>Wall Art</option>
+</select>
+</label>
+<label class="block">
+<span class="text-text-main dark:text-gray-300 font-medium text-sm mb-2 block">Vendor</span>
+<select class="w-full rounded-lg border-border-light dark:border-border-dark bg-white dark:bg-surface-dark focus:border-primary focus:ring-primary dark:text-white dark:focus:border-primary h-12 px-4 transition-colors">
+<option>Clay &amp; Co. Originals</option>
+<option>Local Artisan Partnership</option>
+<option>Global Imports</option>
+</select>
+</label>
+<div>
+<span class="text-text-main dark:text-gray-300 font-medium text-sm mb-2 block">Tags</span>
+<div class="flex flex-wrap gap-2 mb-3">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                                            Handmade
+                                            <button class="hover:text-red-500 ml-1"><span class="material-symbols-outlined text-[14px]">close</span></button>
+</span>
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                                            Vase
+                                            <button class="hover:text-red-500 ml-1"><span class="material-symbols-outlined text-[14px]">close</span></button>
+</span>
+</div>
+<input class="w-full rounded-lg border-border-light dark:border-border-dark bg-white dark:bg-surface-dark focus:border-primary focus:ring-primary dark:text-white dark:focus:border-primary h-10 px-4 text-sm placeholder:text-text-muted transition-colors" placeholder="Add a tag..." type="text"/>
+</div>
+</div>
+</section>
+<!-- Variants Quick Action -->
+<section class="bg-primary/5 dark:bg-primary/10 rounded-xl p-6 border border-primary/20">
+<h3 class="text-sm font-bold text-text-main dark:text-white mb-2">Product Variants</h3>
+<p class="text-xs text-text-muted mb-4">Does this product have variations like size or color?</p>
+<button class="w-full py-2 rounded-lg border border-primary text-primary hover:bg-primary hover:text-white transition-all text-sm font-bold flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                                Add Variant
+                            </button>
+</section>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<div class="max-w-7xl mx-auto mt-12 pb-4 border-t border-border-light dark:border-border-dark pt-6 flex justify-between items-center text-xs text-text-muted">
+<p>© 2023 Clay &amp; Co. Admin Panel</p>
+<div class="flex gap-4">
+<a class="hover:text-primary" href="#">Help Center</a>
+<a class="hover:text-primary" href="#">Privacy Policy</a>
+</div>
+</div>
+</div>
+</main>
+</body></html>
