@@ -9,18 +9,11 @@ import type { OrderSummaryData } from "./types";
 
 interface OrderSummaryProps {
     summary: OrderSummaryData;
-    onApplyPromo?: (code: string) => void;
     onCheckout?: () => void;
 }
 
-export function OrderSummary({ summary, onApplyPromo, onCheckout }: OrderSummaryProps) {
-    const [promoCode, setPromoCode] = useState("");
+export function OrderSummary({ summary, onCheckout }: OrderSummaryProps) {
 
-    const handleApplyPromo = () => {
-        if (promoCode.trim() && onApplyPromo) {
-            onApplyPromo(promoCode.trim());
-        }
-    };
 
     return (
         <div className="bg-card rounded-xl shadow-lg border border-border overflow-hidden">
@@ -59,28 +52,7 @@ export function OrderSummary({ summary, onApplyPromo, onCheckout }: OrderSummary
                     )}
                 </div>
 
-                {/* Promo Code Input */}
-                <div className="pt-4 pb-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
-                        Promo Code
-                    </label>
-                    <div className="flex gap-2">
-                        <Input
-                            type="text"
-                            placeholder="Enter code"
-                            value={promoCode}
-                            onChange={(e) => setPromoCode(e.target.value)}
-                            className="flex-1 bg-secondary border-none"
-                        />
-                        <Button
-                            variant="secondary"
-                            onClick={handleApplyPromo}
-                            className="bg-foreground text-background hover:bg-foreground/90"
-                        >
-                            Apply
-                        </Button>
-                    </div>
-                </div>
+
 
                 <Separator />
 

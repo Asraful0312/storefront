@@ -11,6 +11,9 @@ const orderItemValidator = v.object({
     quantity: v.number(),
     price: v.number(),
     image: v.optional(v.string()),
+    // Digital fields
+    downloadCount: v.optional(v.number()), // Number of times downloaded
+    maxDownloads: v.optional(v.number()), // Limit from product at time of purchase
 });
 
 const orderStatusValidator = v.union(
@@ -188,8 +191,24 @@ export const getOrder = query({
             shippingAddress = await ctx.db.get(order.shippingAddressId);
         }
 
+        // Enrich items with digital file availability status
+        const itemsWithFileStatus = await Promise.all(
+            order.items.map(async (item) => {
+                let hasFile = false;
+                if (item.productType === "digital") {
+                    const product = await ctx.db.get(item.productId);
+                    hasFile = !!(product?.digitalFiles && product.digitalFiles.length > 0);
+                }
+                return {
+                    ...item,
+                    hasFile,
+                };
+            })
+        );
+
         return {
             ...order,
+            items: itemsWithFileStatus,
             shippingAddress,
         };
     },
@@ -370,7 +389,19 @@ export const updateOrderStatus = mutation({
         });
 
         const newOrder = await ctx.db.get(args.orderId);
-        await orderStats.replace(ctx, oldOrder, newOrder!);
+        
+        try {
+            await orderStats.replace(ctx, oldOrder, newOrder!);
+        } catch (error: any) {
+            // If the key was missing from the aggregate (sync issue), insert it instead
+            // The error from @convex-dev/aggregate is DELETE_MISSING_KEY
+            if (error.data?.code === "DELETE_MISSING_KEY" || String(error).includes("DELETE_MISSING_KEY")) {
+                console.log("Recovering from DELETE_MISSING_KEY in orderStats by inserting");
+                await orderStats.insert(ctx, newOrder!);
+            } else {
+                throw error;
+            }
+        }
 
         return null;
     },
@@ -640,5 +671,133 @@ export const backfillOrderStats = mutation({
             }
         }
         return `Backfilled ${processed} orders`;
+    }
+});
+
+// Deliver gift card code to a specific order item (admin only)
+export const deliverGiftCode = mutation({
+    args: {
+        orderId: v.id("orders"),
+        itemIndex: v.number(),
+        giftCardCode: v.string(),
+    },
+    returns: v.null(),
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthenticated");
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+            .unique();
+
+        if (!user || user.role !== "admin") throw new Error("Unauthorized");
+
+        const order = await ctx.db.get(args.orderId);
+        if (!order) throw new Error("Order not found");
+
+        if (args.itemIndex < 0 || args.itemIndex >= order.items.length) {
+            throw new Error("Invalid item index");
+        }
+
+        const item = order.items[args.itemIndex];
+        if (item.productType !== "gift_card") {
+            throw new Error("Item is not a gift card");
+        }
+
+        // Update the specific item's gift card code
+        const updatedItems = [...order.items];
+        updatedItems[args.itemIndex] = {
+            ...updatedItems[args.itemIndex],
+            giftCardCode: args.giftCardCode,
+        };
+
+        // Check if all items are now delivered (all digital items have their files/codes)
+        const allDelivered = updatedItems.every((item) => {
+            if (item.productType === "gift_card") return !!item.giftCardCode;
+            if (item.productType === "digital") return !!item.digitalFileUrl;
+            return true; // physical items don't block digital delivery
+        });
+
+        const oldOrder = order;
+        const newStatus = allDelivered ? "delivered" as const : order.status;
+
+        await ctx.db.patch(args.orderId, {
+            items: updatedItems,
+            status: newStatus,
+        });
+
+        if (newStatus !== order.status) {
+            const newOrder = await ctx.db.get(args.orderId);
+            try {
+                await orderStats.replace(ctx, oldOrder, newOrder!);
+            } catch (error: any) {
+                if (error.data?.code === "DELETE_MISSING_KEY" || String(error).includes("DELETE_MISSING_KEY")) {
+                    await orderStats.insert(ctx, newOrder!);
+                } else {
+                    throw error;
+                }
+            }
+        }
+
+        return null;
+    },
+});
+
+// Track download and enforce download limits
+// Securely get download URL and track usage
+export const getDownloadUrl = mutation({
+    args: {
+        orderId: v.id("orders"),
+        productId: v.id("products"),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+            .unique();
+
+        if (!user) throw new Error("User not found");
+
+        const order = await ctx.db.get(args.orderId);
+        if (!order) throw new Error("Order not found");
+
+        if (order.userId !== user._id) throw new Error("Unauthorized access to order");
+
+        // Find the item
+        const itemIndex = order.items.findIndex(i => i.productId === args.productId);
+        if (itemIndex === -1) throw new Error("Item not found in order");
+        const item = order.items[itemIndex];
+
+        // Check limits
+        if (item.maxDownloads !== undefined) {
+            const currentDownloads = item.downloadCount || 0;
+            if (currentDownloads >= item.maxDownloads) {
+                throw new Error("Download limit reached");
+            }
+        }
+
+        // Get the product to retrieve the file URL
+        const product = await ctx.db.get(args.productId);
+        if (!product || !product.digitalFiles || product.digitalFiles.length === 0) {
+            throw new Error("File not found or product no longer available");
+        }
+
+        // Increment count
+        const updatedItems = [...order.items];
+        updatedItems[itemIndex] = {
+            ...item,
+            downloadCount: (item.downloadCount || 0) + 1,
+        };
+
+        await ctx.db.patch(args.orderId, { items: updatedItems });
+
+        return {
+            url: product.digitalFiles[0].url,
+            remaining: item.maxDownloads !== undefined ? item.maxDownloads - ((item.downloadCount || 0) + 1) : undefined
+        };
     }
 });

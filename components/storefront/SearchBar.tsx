@@ -78,7 +78,7 @@ export function SearchBar({ className, onClose }: SearchBarProps) {
         if (onClose) onClose();
 
         if (type === "product" && slug) {
-            router.push(`/shop/product/${slug}`);
+            router.push(`/product/${slug}`);
         } else {
             router.push(`/shop?search=${encodeURIComponent(term)}`);
         }

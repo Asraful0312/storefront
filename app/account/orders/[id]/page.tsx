@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Copy, Check, FileText } from "lucide-react";
+import { ArrowLeft, Copy, Check } from "lucide-react";
 import { Header, Footer, Breadcrumb } from "@/components/storefront";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import {
     OrderHelpLink,
     type OrderTrackingStatus,
 } from "@/components/account";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { formatDate } from "@/lib/utils";
@@ -35,6 +35,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
     const { id: orderId }: any = use(params as any);
 
     const order = useQuery(api.orders.getOrder, { orderId });
+    const getDownloadUrl = useMutation(api.orders.getDownloadUrl);
     const [copied, setCopied] = useState(false);
 
     const handleCopyOrderId = () => {
@@ -80,36 +81,65 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
         { label: `Order #${order.orderNumber}` },
     ];
 
-    // Map status to tracking steps
-    const trackingSteps: { status: OrderTrackingStatus; label: string; date: string; isCompleted: boolean; isCurrent?: boolean }[] = [
-        {
-            status: "ordered",
-            label: "Ordered",
-            date: formatDate(order._creationTime),
-            isCompleted: true
-        },
-        {
-            status: "processed",
-            label: "Processed",
-            date: order.status !== "pending" ? "..." : "", // Empty string for proper type
-            isCompleted: order.status !== "pending" && order.status !== "cancelled",
-            isCurrent: order.status === "processing"
-        },
-        {
-            status: "shipped",
-            label: "Shipped",
-            date: "",
-            isCompleted: order.status === "shipped" || order.status === "delivered",
-            isCurrent: order.status === "shipped"
-        },
-        {
-            status: "delivered",
-            label: "Delivered",
-            date: "",
-            isCompleted: order.status === "delivered",
-            isCurrent: order.status === "delivered"
-        },
-    ];
+    // Detect if order is all digital
+    const isAllDigital = order.items.every((item: any) => {
+        const pt = item.productType;
+        return pt === "digital" || pt === "gift_card";
+    });
+
+    // Map status to tracking steps — different flow for digital orders
+    const trackingSteps: { status: OrderTrackingStatus; label: string; date: string; isCompleted: boolean; isCurrent?: boolean }[] = isAllDigital
+        ? [
+            {
+                status: "ordered",
+                label: "Ordered",
+                date: formatDate(order._creationTime),
+                isCompleted: true
+            },
+            {
+                status: "processed",
+                label: "Confirmed",
+                date: order.status !== "pending" ? "..." : "",
+                isCompleted: order.status !== "pending" && order.status !== "cancelled",
+                isCurrent: order.status === "processing"
+            },
+            {
+                status: "delivered",
+                label: "Delivered",
+                date: "",
+                isCompleted: order.status === "delivered",
+                isCurrent: order.status === "delivered"
+            },
+        ]
+        : [
+            {
+                status: "ordered",
+                label: "Ordered",
+                date: formatDate(order._creationTime),
+                isCompleted: true
+            },
+            {
+                status: "processed",
+                label: "Processed",
+                date: order.status !== "pending" ? "..." : "",
+                isCompleted: order.status !== "pending" && order.status !== "cancelled",
+                isCurrent: order.status === "processing"
+            },
+            {
+                status: "shipped",
+                label: "Shipped",
+                date: "",
+                isCompleted: order.status === "shipped" || order.status === "delivered",
+                isCurrent: order.status === "shipped"
+            },
+            {
+                status: "delivered",
+                label: "Delivered",
+                date: "",
+                isCompleted: order.status === "delivered",
+                isCurrent: order.status === "delivered"
+            },
+        ];
 
     const displayOrderId = order.orderNumber.length > 20
         ? `...${order.orderNumber.slice(-8)}`
@@ -166,14 +196,44 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column: Items List */}
                     <div className="lg:col-span-2 flex flex-col gap-6">
-                        <OrderItemsList items={order.items.map((item: any) => ({
-                            id: item.productId,
-                            name: item.name,
-                            image: item.image || "",
-                            variant: "",
-                            quantity: item.quantity,
-                            price: item.price / 100
-                        }))} />
+                        <OrderItemsList
+                            items={order.items.map((item: any) => ({
+                                id: item.productId,
+                                name: item.name,
+                                image: item.image || "",
+                                variant: "",
+                                quantity: item.quantity,
+                                price: item.price / 100,
+                                productType: item.productType,
+                                hasFile: item.hasFile,
+                                // digitalFileUrl: item.digitalFileUrl, // No longer on item, fetched on demand
+                                // digitalFileName: item.digitalFileName,
+                                giftCardCode: item.giftCardCode,
+                                downloadCount: item.downloadCount,
+                                maxDownloads: item.maxDownloads,
+                            }))}
+                            onDownload={async (itemIndex) => {
+                                try {
+                                    const item = order.items[itemIndex];
+                                    if (!item) return { allowed: false };
+                                    
+                                    const result = await getDownloadUrl({
+                                        orderId: order._id,
+                                        productId: item.productId,
+                                    });
+                                    if (result.url) {
+                                        window.open(result.url, "_blank");
+                                    }
+                                    return { 
+                                        allowed: true, 
+                                        remainingDownloads: result.remaining 
+                                    };
+                                } catch (e: any) {
+                                    toast.error(e.message || "Download failed");
+                                    return { allowed: false };
+                                }
+                            }}
+                        />
                     </div>
 
                     {/* Right Column: Details & Summary */}

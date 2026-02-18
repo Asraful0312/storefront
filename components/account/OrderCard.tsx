@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { RefreshCw, Undo2 } from "lucide-react";
+import { RefreshCw, Undo2, Gift, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -111,13 +111,23 @@ export function OrderCard({ order, onReorder }: OrderCardProps) {
                     {order.items.slice(0, 2).map((item) => (
                         <div
                             key={item.id}
-                            className="w-16 h-16 rounded-lg bg-secondary overflow-hidden shrink-0 border border-border"
+                            className="relative w-16 h-16 rounded-lg bg-secondary overflow-hidden shrink-0 border border-border"
                         >
                             <img
                                 src={item.image}
                                 alt={item.name}
                                 className={cn("w-full h-full object-cover", isReturned && "grayscale")}
                             />
+                            {item.productType === "digital" && (
+                                <div className="absolute top-0.5 right-0.5 p-0.5 bg-blue-600 rounded-full" title="Digital product">
+                                    <FileDown className="size-2.5 text-white" />
+                                </div>
+                            )}
+                            {item.productType === "gift_card" && (
+                                <div className="absolute top-0.5 right-0.5 p-0.5 bg-purple-600 rounded-full" title="Gift card">
+                                    <Gift className="size-2.5 text-white" />
+                                </div>
+                            )}
                         </div>
                     ))}
                     {remainingItems > 0 && (

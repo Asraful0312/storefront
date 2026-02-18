@@ -83,15 +83,7 @@ export function Header() {
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-10 rounded-full hover:bg-secondary"
-                            >
-                                <Heart className="size-6" />
-                            </Button>
-
+                        <div className="flex items-center gap-2">  
                             <Link
                                 href='/cart'
                                 className={buttonVariants({

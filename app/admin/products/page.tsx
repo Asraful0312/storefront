@@ -93,6 +93,7 @@ export default function AdminProductsPage() {
         stockLevel: p.totalStock,
         stockStatus: p.stockStatus,
         status: p.status,
+        productType: p.productType,
     }));
 
     const handleEdit = (id: string) => {

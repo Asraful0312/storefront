@@ -13,6 +13,10 @@ interface CheckoutOrderSummaryProps {
     shipping: number;
     tax: number;
     total: number;
+    discountAmount?: number;
+    couponCode?: string;
+    couponError?: string;
+    isValidating?: boolean;
     onApplyDiscount?: (code: string) => void;
     onPlaceOrder: () => void;
     loading?: boolean;
@@ -25,16 +29,20 @@ export function CheckoutOrderSummary({
     shipping,
     tax,
     total,
+    discountAmount = 0,
+    couponCode,
+    couponError,
+    isValidating,
     onApplyDiscount,
     onPlaceOrder,
     loading,
     hideButton,
 }: CheckoutOrderSummaryProps) {
-    const [discountCode, setDiscountCode] = useState("");
+    const [discountInput, setDiscountInput] = useState("");
 
     const handleApplyDiscount = () => {
-        if (discountCode.trim() && onApplyDiscount) {
-            onApplyDiscount(discountCode.trim());
+        if (discountInput.trim() && onApplyDiscount) {
+            onApplyDiscount(discountInput.trim());
         }
     };
 
@@ -71,16 +79,33 @@ export function CheckoutOrderSummary({
                 </div>
 
                 {/* Discount Code */}
-                <div className="flex gap-2 mb-6">
-                    <Input
-                        placeholder="Discount code"
-                        value={discountCode}
-                        onChange={(e) => setDiscountCode(e.target.value)}
-                        className="flex-1 h-10 text-sm"
-                    />
-                    <Button variant="secondary" size="sm" onClick={handleApplyDiscount}>
-                        Apply
-                    </Button>
+                <div className="flex flex-col gap-2 mb-6">
+                    <div className="flex gap-2">
+                        <Input
+                            placeholder="Discount code"
+                            value={discountInput}
+                            onChange={(e) => setDiscountInput(e.target.value)}
+                            className="flex-1 h-10 text-sm"
+                            disabled={isValidating}
+                            onKeyDown={(e) => e.key === "Enter" && handleApplyDiscount()}
+                        />
+                        <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            onClick={handleApplyDiscount}
+                            disabled={isValidating || !discountInput.trim()}
+                        >
+                            {isValidating ? "..." : "Apply"}
+                        </Button>
+                    </div>
+                    {couponError && (
+                        <p className="text-xs text-destructive font-medium">{couponError}</p>
+                    )}
+                    {couponCode && !couponError && (
+                        <div className="flex items-center justify-between bg-green-500/10 text-green-600 px-3 py-2 rounded text-xs font-medium border border-green-500/20">
+                            <span>Coupon applied: {couponCode}</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Calculations */}
@@ -100,6 +125,13 @@ export function CheckoutOrderSummary({
                         <span className="font-medium text-foreground">${tax.toFixed(2)}</span>
                     </div>
 
+                    {discountAmount > 0 && (
+                        <div className="flex justify-between text-sm text-green-600 font-medium">
+                            <span>Discount</span>
+                            <span>-${discountAmount.toFixed(2)}</span>
+                        </div>
+                    )}
+
                     <Separator className="my-2" />
 
                     <div className="flex justify-between items-center">
@@ -107,7 +139,7 @@ export function CheckoutOrderSummary({
                         <div className="flex items-end gap-2">
                             <span className="text-xs text-muted-foreground mb-1">USD</span>
                             <span className="text-xl font-black tracking-tight text-primary">
-                                ${total.toFixed(2)}
+                                ${(total < 0 ? 0 : total).toFixed(2)}
                             </span>
                         </div>
                     </div>

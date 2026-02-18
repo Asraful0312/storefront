@@ -24,9 +24,7 @@ export default function CartPage() {
     const taxSettings = useQuery(api.tax.get);
     const addresses = useQuery(api.addresses.listAddresses);
 
-    // Local state for promo (mock)
-    const [promoCode, setPromoCode] = useState<string | undefined>();
-    const [promoDiscount, setPromoDiscount] = useState(0);
+
 
     // Map hook items to CartItemData
     const cartItems: CartItemData[] = useMemo(() => {
@@ -53,16 +51,22 @@ export default function CartPage() {
 
     // Prepare items for backend calculation
     const shippingItems = useMemo(() => {
-        return items.map((item) => {
-            const product = item.product as any;
-            return {
-                weight: product.weight || 0,
-                quantity: item.quantity,
-                shippingRateOverride: product.shippingRateOverride,
-                isFreeShipping: product.isFreeShipping,
-                dimensions: product.dimensions,
-            };
-        });
+        return items
+            .filter((item) => {
+                const product = item.product as any;
+                // Only calculate shipping for physical products (or legacy products without type)
+                return !product.productType || product.productType === "physical";
+            })
+            .map((item) => {
+                const product = item.product as any;
+                return {
+                    weight: product.weight || 0,
+                    quantity: item.quantity,
+                    shippingRateOverride: product.shippingRateOverride,
+                    isFreeShipping: product.isFreeShipping,
+                    dimensions: product.dimensions,
+                };
+            });
     }, [items]);
 
     const taxItems = useMemo(() => {
@@ -95,30 +99,16 @@ export default function CartPage() {
     const shippingCost = (shippingCalc?.rate || 0) / 100; // Convert to Dollars
     const taxCost = (taxCalc?.amount || 0) / 100; // Convert to Dollars
 
-    const total = subtotal + shippingCost + taxCost - promoDiscount;
+    const total = subtotal + shippingCost + taxCost;
 
     const summary: OrderSummaryData = {
         subtotal,
         shipping: shippingCost,
         tax: taxCost,
         total,
-        promoCode,
-        promoDiscount: promoDiscount > 0 ? promoDiscount : undefined,
     };
 
-    const handleApplyPromo = (code: string) => {
-        // Simple promo code logic - in real app this would validate with backend
-        if (code.toUpperCase() === "SAVE10") {
-            setPromoCode(code);
-            setPromoDiscount(subtotal * 0.1);
-        } else if (code.toUpperCase() === "SAVE20") {
-            setPromoCode(code);
-            setPromoDiscount(subtotal * 0.2);
-        } else {
-            setPromoCode(undefined);
-            setPromoDiscount(0);
-        }
-    };
+
 
     const handleCheckout = () => {
         window.location.href = "/checkout";
@@ -197,7 +187,6 @@ export default function CartPage() {
                             <div className="lg:col-span-4 lg:sticky lg:top-24">
                                 <OrderSummary
                                     summary={summary}
-                                    onApplyPromo={handleApplyPromo}
                                     onCheckout={handleCheckout}
                                 />
                             </div>

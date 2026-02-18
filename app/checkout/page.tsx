@@ -9,7 +9,7 @@ import {
     type ShippingAddress,
     type CheckoutStep,
 } from "@/components/checkout";
-import { useQuery, useAction } from "convex/react";
+import { useQuery, useAction, useConvex } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { countries, getStatesOfCountry } from "@/lib/country";
@@ -17,6 +17,7 @@ import { countries, getStatesOfCountry } from "@/lib/country";
 export default function CheckoutPage() {
     const addresses = useQuery(api.addresses.listAddresses);
     const cartItems = useQuery(api.cart.get);
+    const storedCoupon = useQuery(api.cart.getAppliedCoupon);
 
     // Actions
     const createCheckoutSession = useAction(api.payments.createCheckoutSession);
@@ -96,6 +97,19 @@ export default function CheckoutPage() {
     // Let's rely on backend for final totals but display subtotal here.
     const subtotal = cartItems ? cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0) : 0;
 
+    const isAllDigital = cartItems?.every(item => {
+        const pType = (item.product as any).productType;
+        return pType === "digital" || pType === "gift_card";
+    }) ?? false;
+
+    // Set initial step based on cart type
+    useEffect(() => {
+        if (cartItems && isAllDigital) {
+            setOpenStep("payment");
+            setCompletedSteps(prev => prev.includes("address") ? prev : [...prev, "address"]);
+        }
+    }, [cartItems, isAllDigital]);
+
     const handleContinueToPayment = () => {
         setCompletedSteps((prev) =>
             prev.includes("address") ? prev : [...prev, "address"]
@@ -103,19 +117,87 @@ export default function CheckoutPage() {
         setOpenStep("payment");
     };
 
+    // Coupon State
+    const convex = useConvex();
     const [couponCode, setCouponCode] = useState<string | undefined>();
+    const [couponError, setCouponError] = useState<string | undefined>();
+    const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+    const [discountAmount, setDiscountAmount] = useState(0);
 
-    const handleApplyDiscount = (code: string) => {
-        setCouponCode(code);
-        // Note: We are trusting the frontend "apply" action here for the MVP.
-        // Ideally we would validate this against the backend before setting state.
+    // Auto-apply stored coupon
+    useEffect(() => {
+        if (storedCoupon && !couponCode && !couponError && !isValidatingCoupon) {
+            handleApplyDiscount(storedCoupon);
+        }
+    }, [storedCoupon]);
+
+    const handleApplyDiscount = async (code: string) => {
+        setIsValidatingCoupon(true);
+        setCouponError(undefined);
+        setDiscountAmount(0);
+        setCouponCode(undefined);
+
+        try {
+            const result = await convex.query(api.coupons.validateCoupon, {
+                code,
+                purchaseAmount: subtotal // subtotal is in cents?
+                // subtotal calc: item.product.price * item.quantity. 
+                // item.product.price is usually cents.
+                // Line 97: subtotal is accumulation of item.product.price.
+                // Line 168 (display): item.product.price / 100.
+                // So subtotal is cents. Correct.
+            });
+
+            if (result.valid && result.coupon) {
+                setCouponCode(result.coupon.code);
+                
+                // Calculate Discount locally for display
+                // (Server recalculates for security, this is just for UI)
+                let discount = 0;
+                if (result.coupon.discountType === "percentage") {
+                    discount = (subtotal * result.coupon.discountValue) / 100;
+                } else if (result.coupon.discountType === "fixed") {
+                    discount = result.coupon.discountValue * 100; // Assuming stored in dollars? Or cents?
+                    // Schema: `discountValue: v.number()`. If Stripe coupons: amount_off is cents.
+                    // If manually created: usually dollars for humans? NO, usually system standardizes on Cents.
+                    // Let's assume cents for consistency with Stripe.
+                    // Wait, earlier I saw `discountValue` being used. If I used `stripe.coupons.create`, `amount_off` is cents.
+                    // So `discountValue` should be cents.
+                    discount = result.coupon.discountValue;
+                } else if (result.coupon.discountType === "shipping") {
+                    // Estimate shipping cost?
+                    // We don't have shipping cost calculated here easily (it's server side in session).
+                    // Frontend doesn't know shipping cost.
+                    // We can just set discountAmount to 0 or a placeholder, or try to fetch shipping estimate?
+                    // For now, let's treat "Free Shipping" as special display in OrderSummary?
+                    // CheckoutOrderSummary handles shipping === 0 display.
+                    // But we don't update `shipping` prop here easily.
+                    // Let's just set discount = 0 and let OrderSummary show "Coupon applied".
+                    // The actual session will have 0 shipping.
+                    discount = 0; 
+                }
+                setDiscountAmount(discount);
+                
+                // Persist to database (if logged in)
+                // We use mutation. Fire and forget or await? Await is safer.
+                await convex.mutation(api.cart.applyCoupon, { code: result.coupon.code });
+
+            } else {
+                setCouponError(result.error);
+            }
+        } catch (error) {
+            console.error("Coupon validation failed:", error);
+            setCouponError("Failed to validate coupon");
+        } finally {
+            setIsValidatingCoupon(false);
+        }
     };
 
     const handlePlaceOrder = async () => {
         setIsProcessing(true);
         try {
             const url = await createCheckoutSession({
-                shippingAddress: {
+                shippingAddress: isAllDigital ? undefined : {
                     street: address.address,
                     city: address.city,
                     state: address.state,
@@ -190,16 +272,32 @@ export default function CheckoutPage() {
                                 Secure Checkout
                             </h1>
 
-                            {/* Step 1: Shipping Address */}
-                            <ShippingAddressForm
-                                address={address}
-                                onChange={setAddress}
-                                onContinue={handleContinueToPayment}
-                                stepNumber={1}
-                                isOpen={openStep === "address"}
-                                onToggle={() => setOpenStep("address")}
-                                isCompleted={completedSteps.includes("address")}
-                            />
+                            {/* Step 1: Shipping Address (Physical) or Contact Info (Digital) */}
+                            {isAllDigital ? (
+                                <div className={`rounded-xl border bg-card transition-all duration-300 ${openStep === "address" ? "ring-2 ring-primary ring-offset-2 shadow-lg" : ""}`}>
+                                    <div className="flex items-center justify-between p-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex items-center justify-center size-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">
+                                                ✓
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-bold">Digital Delivery</h3>
+                                                <p className="text-sm text-muted-foreground">Order details will be sent to your email.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <ShippingAddressForm
+                                    address={address}
+                                    onChange={setAddress}
+                                    onContinue={handleContinueToPayment}
+                                    stepNumber={1}
+                                    isOpen={openStep === "address"}
+                                    onToggle={() => setOpenStep("address")}
+                                    isCompleted={completedSteps.includes("address")}
+                                />
+                            )}
 
                             {/* Step 2: Payment */}
                             <div className={`rounded-xl border bg-card transition-all duration-300 ${openStep === "payment" ? "ring-2 ring-primary ring-offset-2 shadow-lg" : "hover:border-primary/50"}`}>
@@ -241,10 +339,15 @@ export default function CheckoutPage() {
                                 subtotal={subtotal / 100}
                                 shipping={0} // Calculated at next step
                                 tax={0} // Calculated at next step
-                                total={subtotal / 100} // Preliminary
+
                                 onPlaceOrder={handlePlaceOrder}
                                 onApplyDiscount={handleApplyDiscount}
                                 hideButton={true} // We use the main button in step 2
+                                discountAmount={discountAmount / 100} // Convert to dollars
+                                couponCode={couponCode}
+                                couponError={couponError}
+                                isValidating={isValidatingCoupon}
+                                total={(subtotal - discountAmount) / 100} // Adjust total display
                             />
                             <p className="text-xs text-center text-muted-foreground mt-4">
                                 Shipping & Taxes calculated at payment.

@@ -122,8 +122,7 @@ export default function OrderHistoryPage() {
                                                 id: item.productId,
                                                 name: item.name,
                                                 image: item.image || "",
-                                                // Assuming OrderCard types might need adjustment if it strictly requires exact properties
-                                                // Looking at OrderCard usage, it uses id, name, image.
+                                                productType: item.productType,
                                             }))
                                         }}
                                         onReorder={handleReorder}

@@ -15,6 +15,8 @@ import type * as clerk from "../clerk.js";
 import type * as cloudinary from "../cloudinary.js";
 import type * as cloudinaryImages from "../cloudinaryImages.js";
 import type * as coupons from "../coupons.js";
+import type * as debug_orders from "../debug_orders.js";
+import type * as digitalFiles from "../digitalFiles.js";
 import type * as heroSlides from "../heroSlides.js";
 import type * as http from "../http.js";
 import type * as orders from "../orders.js";
@@ -27,6 +29,7 @@ import type * as shippingSettings from "../shippingSettings.js";
 import type * as siteSettings from "../siteSettings.js";
 import type * as stripe from "../stripe.js";
 import type * as tax from "../tax.js";
+import type * as uploadRawFile from "../uploadRawFile.js";
 import type * as users from "../users.js";
 import type * as wishlist from "../wishlist.js";
 
@@ -44,6 +47,8 @@ declare const fullApi: ApiFromModules<{
   cloudinary: typeof cloudinary;
   cloudinaryImages: typeof cloudinaryImages;
   coupons: typeof coupons;
+  debug_orders: typeof debug_orders;
+  digitalFiles: typeof digitalFiles;
   heroSlides: typeof heroSlides;
   http: typeof http;
   orders: typeof orders;
@@ -56,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   siteSettings: typeof siteSettings;
   stripe: typeof stripe;
   tax: typeof tax;
+  uploadRawFile: typeof uploadRawFile;
   users: typeof users;
   wishlist: typeof wishlist;
 }>;

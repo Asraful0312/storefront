@@ -71,6 +71,36 @@ export default defineSchema({
     description: v.string(),
     story: v.optional(v.string()),
 
+    // Product type
+    productType: v.optional(
+      v.union(v.literal("physical"), v.literal("digital"), v.literal("gift_card"))
+    ), // defaults to "physical" for backward compat
+
+    // Digital product fields
+    digitalFiles: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          url: v.string(),
+          publicId: v.string(),
+          fileType: v.string(),
+          fileSize: v.optional(v.number()),
+        })
+      )
+    ),
+    maxDownloads: v.optional(v.number()), // null/undefined = unlimited
+
+    // Digital/gift card stock management
+    digitalStockMode: v.optional(
+      v.union(v.literal("unlimited"), v.literal("limited"))
+    ), // defaults to "unlimited"
+    digitalStockCount: v.optional(v.number()), // only used when digitalStockMode is "limited"
+
+    // Gift card fields
+    giftCardCodeMode: v.optional(
+      v.union(v.literal("auto"), v.literal("manual"))
+    ),
+
     // Pricing (in cents)
     basePrice: v.number(),
     compareAtPrice: v.optional(v.number()),
@@ -273,6 +303,13 @@ export default defineSchema({
         quantity: v.number(),
         price: v.number(),
         image: v.optional(v.string()),
+        // Digital delivery fields
+        productType: v.optional(v.string()),
+        digitalFileUrl: v.optional(v.string()),
+        digitalFileName: v.optional(v.string()),
+        giftCardCode: v.optional(v.string()),
+        downloadCount: v.optional(v.number()),
+        maxDownloads: v.optional(v.number()),
       })
     ),
     subtotal: v.number(),
@@ -280,6 +317,7 @@ export default defineSchema({
     shipping: v.number(),
     total: v.number(),
     shippingAddressId: v.optional(v.id("addresses")),
+    customerEmail: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
     trackingNumber: v.optional(v.string()),
   })
@@ -312,6 +350,16 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_orderId", ["orderId"]),
 
+  // Digital Files Library
+  digitalFiles: defineTable({
+    name: v.string(),
+    url: v.string(),
+    publicId: v.string(),
+    fileType: v.string(),
+    fileSize: v.optional(v.number()),
+    uploadedAt: v.number(),
+  }).index("by_name", ["name"]),
+
   // ==================== MARKETING TABLES ====================
 
   // Coupons
@@ -331,11 +379,18 @@ export default defineSchema({
     limitPerCustomer: v.optional(v.boolean()),
     usageCount: v.number(),
     isActive: v.boolean(),
+    stripeCouponId: v.optional(v.string()),
   })
     .index("by_code", ["code"])
     .index("by_isActive", ["isActive"])
     .index("by_usageCount", ["usageCount"])
     .searchIndex("search_code", { searchField: "code" }),
+
+  // Cart Metadata
+  cartMetadata: defineTable({
+    userId: v.id("users"),
+    couponCode: v.optional(v.string()),
+  }).index("by_userId", ["userId"]),
 
   // ==================== SETTINGS TABLES ====================
 

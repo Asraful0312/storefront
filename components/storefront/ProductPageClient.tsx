@@ -121,7 +121,9 @@ export function ProductPageClient({ slug }: { slug: string }) {
         shippingLabel,
         shippingSublabel,
         warrantyLabel,
+
         warrantySublabel,
+        productType: productData.productType,
     };
 
     // Map related products

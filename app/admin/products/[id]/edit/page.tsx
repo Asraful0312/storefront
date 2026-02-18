@@ -27,6 +27,10 @@ import {
     Grid,
     CornerDownRight,
     ArrowLeft,
+    Download,
+    Gift,
+    FileDown,
+    Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +49,7 @@ import { type ProductDetail } from "@/components/storefront";
 // Hooks
 import { useProductForm, ProductFormData } from "@/hooks/useProductForm";
 import { useCloudinaryImages, ProductImage } from "@/hooks/useCloudinaryImages";
+import { useCloudinaryFiles } from "@/hooks/useCloudinaryFiles";
 
 // Components
 import { ImageLibraryPicker } from "@/components/admin/ImageLibraryPicker";
@@ -105,6 +110,13 @@ function EditProductForm({ product, productId }: { product: any; productId: Id<"
         features: product.features,
         colorOptions: product.colorOptions,
         sizeOptions: product.sizeOptions,
+        // Digital product fields
+        productType: product.productType || "physical",
+        digitalFiles: product.digitalFiles || [],
+        maxDownloads: product.maxDownloads,
+        digitalStockMode: product.digitalStockMode || "unlimited",
+        digitalStockCount: product.digitalStockCount,
+        giftCardCodeMode: product.giftCardCodeMode || "auto",
         variants: product.variants.map((v: any) => ({
             _id: v._id,
             colorId: v.colorId,
@@ -131,6 +143,11 @@ function EditProductForm({ product, productId }: { product: any; productId: Id<"
     const cloudinary = useCloudinaryImages({
         productName: form.name,
         initialImages
+    });
+
+    const digitalFileUpload = useCloudinaryFiles({
+        folder: "digital-files",
+        initialFiles: product.digitalFiles || [],
     });
 
     const handlePreview = () => {
@@ -215,11 +232,18 @@ function EditProductForm({ product, productId }: { product: any; productId: Id<"
                         height: parseFloat(formData.height),
                     }
                     : undefined,
-                requiresShipping: formData.requiresShipping,
+                requiresShipping: form.productType === "physical" ? formData.requiresShipping : false,
                 specifications: formData.specifications.filter(s => s.key && s.value),
                 features: formData.features,
                 colorOptions: formData.colorOptions,
                 sizeOptions: formData.sizeOptions,
+                // Digital product fields
+                productType: form.productType,
+                digitalFiles: digitalFileUpload.files,
+                maxDownloads: form.maxDownloads,
+                giftCardCodeMode: form.giftCardCodeMode,
+                digitalStockMode: form.productType !== "physical" ? form.digitalStockMode : undefined,
+                digitalStockCount: form.productType !== "physical" && form.digitalStockMode === "limited" ? form.digitalStockCount : undefined,
             });
 
             // 2. Replace Variants
@@ -382,6 +406,181 @@ function EditProductForm({ product, productId }: { product: any; productId: Id<"
                                     </div>
                                 </section>
 
+                                {/* Product Type */}
+                                <section className="bg-card rounded-xl p-6 shadow-sm border border-border">
+                                    <div className="flex items-center gap-2 mb-6">
+                                        <Package className="size-5 text-primary" />
+                                        <h2 className="text-lg font-bold text-foreground">Product Type</h2>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {[
+                                            { value: "physical" as const, label: "Physical", icon: Package, desc: "Requires shipping" },
+                                            { value: "digital" as const, label: "Digital", icon: Download, desc: "Downloadable file" },
+                                            { value: "gift_card" as const, label: "Gift Card", icon: Gift, desc: "Code delivery" },
+                                        ].map((option) => (
+                                            <button
+                                                key={option.value}
+                                                type="button"
+                                                onClick={() => form.setProductType(option.value)}
+                                                className={`p-4 rounded-lg border-2 text-left transition-all ${
+                                                    form.productType === option.value
+                                                        ? "border-primary bg-primary/5 shadow-sm"
+                                                        : "border-border hover:border-primary/40 bg-secondary/30"
+                                                }`}
+                                            >
+                                                <option.icon className={`size-5 mb-2 ${
+                                                    form.productType === option.value ? "text-primary" : "text-muted-foreground"
+                                                }`} />
+                                                <p className="font-medium text-sm text-foreground">{option.label}</p>
+                                                <p className="text-xs text-muted-foreground mt-0.5">{option.desc}</p>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </section>
+
+                                {/* Digital File Upload Section (only for digital products) */}
+                                {form.productType === "digital" && (
+                                    <section className="bg-card rounded-xl p-6 shadow-sm border border-border">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <div className="flex items-center gap-2">
+                                                <FileDown className="size-5 text-primary" />
+                                                <h2 className="text-lg font-bold text-foreground">Digital Files</h2>
+                                            </div>
+                                            {digitalFileUpload.isUploading && (
+                                                <div className="flex items-center gap-2 text-sm text-primary">
+                                                    <Loader2 className="size-4 animate-spin" />
+                                                    Uploading... {digitalFileUpload.uploadProgress}%
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <input
+                                            ref={digitalFileUpload.fileInputRef}
+                                            type="file"
+                                            accept=".pdf,.epub,.zip,.rar,.mp3,.mp4,.mov,.txt,.doc,.docx"
+                                            className="hidden"
+                                            onChange={digitalFileUpload.handleFileUpload}
+                                        />
+
+                                        <div
+                                            className="border-2 border-dashed border-primary/30 rounded-xl bg-secondary/30 p-8 text-center hover:bg-primary/5 transition-colors cursor-pointer group"
+                                            onClick={digitalFileUpload.openFilePicker}
+                                        >
+                                            <div className="bg-card rounded-full size-12 flex items-center justify-center mx-auto mb-3 shadow-sm group-hover:scale-110 transition-transform duration-200">
+                                                <CloudUpload className="size-6 text-primary" />
+                                            </div>
+                                            <p className="text-foreground font-medium mb-1">Upload digital file</p>
+                                            <p className="text-muted-foreground text-sm">PDF, EPUB, ZIP, MP3, MP4, etc.</p>
+                                        </div>
+
+                                        {/* Library picker */}
+                                        {digitalFileUpload.libraryFiles && digitalFileUpload.libraryFiles.length > 0 && (
+                                            <>
+                                                <div className="flex items-center gap-4 mt-4">
+                                                    <div className="flex-1 h-px bg-border" />
+                                                    <span className="text-xs text-muted-foreground">or select from library</span>
+                                                    <div className="flex-1 h-px bg-border" />
+                                                </div>
+                                                <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
+                                                    {digitalFileUpload.libraryFiles.map((libFile: any) => {
+                                                        const isSelected = digitalFileUpload.files.some(f => f.publicId === libFile.publicId);
+                                                        return (
+                                                            <button
+                                                                key={libFile._id}
+                                                                type="button"
+                                                                onClick={() => !isSelected && digitalFileUpload.handleSelectFromLibrary(libFile)}
+                                                                className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
+                                                                    isSelected
+                                                                        ? "border-primary bg-primary/5 cursor-default"
+                                                                        : "border-border hover:border-primary/40 cursor-pointer"
+                                                                }`}
+                                                            >
+                                                                <FileDown className="size-4 text-muted-foreground shrink-0" />
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-sm font-medium truncate">{libFile.name}</p>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        {libFile.fileType.toUpperCase()}
+                                                                        {libFile.fileSize ? ` · ${(libFile.fileSize / 1024 / 1024).toFixed(1)} MB` : ""}
+                                                                    </p>
+                                                                </div>
+                                                                {isSelected && <span className="text-xs text-primary font-medium">Selected</span>}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {/* Uploaded files */}
+                                        {digitalFileUpload.files.length > 0 && (
+                                            <div className="mt-4 space-y-2">
+                                                <Label className="text-sm font-medium">Attached Files</Label>
+                                                {digitalFileUpload.files.map((file) => (
+                                                    <div key={file.publicId} className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
+                                                        <FileDown className="size-4 text-primary shrink-0" />
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium truncate">{file.name}</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {file.fileType.toUpperCase()}
+                                                                {file.fileSize ? ` · ${(file.fileSize / 1024 / 1024).toFixed(1)} MB` : ""}
+                                                            </p>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => digitalFileUpload.handleRemoveFile(file.publicId)}
+                                                            className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                                                        >
+                                                            <Trash2 className="size-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Max downloads */}
+                                        <div className="mt-4 space-y-2">
+                                            <Label className="text-sm font-medium">Max Downloads per Customer</Label>
+                                            <Input
+                                                type="number"
+                                                placeholder="Unlimited (leave empty)"
+                                                value={form.maxDownloads ?? ""}
+                                                onChange={(e) => form.setMaxDownloads(e.target.value ? parseInt(e.target.value) : undefined)}
+                                                className="h-10"
+                                            />
+                                            <p className="text-xs text-muted-foreground">Leave empty for unlimited downloads</p>
+                                        </div>
+                                    </section>
+                                )}
+
+                                {/* Gift Card Settings (only for gift cards) */}
+                                {form.productType === "gift_card" && (
+                                    <section className="bg-card rounded-xl p-6 shadow-sm border border-border">
+                                        <div className="flex items-center gap-2 mb-6">
+                                            <Gift className="size-5 text-primary" />
+                                            <h2 className="text-lg font-bold text-foreground">Gift Card Settings</h2>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-medium">Code Generation</Label>
+                                                <Select value={form.giftCardCodeMode} onValueChange={(v: "auto" | "manual") => form.setGiftCardCodeMode(v)}>
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="auto">Auto-generate codes</SelectItem>
+                                                        <SelectItem value="manual">Manual entry</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {form.giftCardCodeMode === "auto"
+                                                        ? "Unique codes will be generated automatically at purchase"
+                                                        : "You will manually enter codes for each order"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </section>
+                                )}
+
                                 {/* Media Section */}
                                 <section className="bg-card rounded-xl p-6 shadow-sm border border-border">
                                     <div className="flex items-center justify-between mb-6">
@@ -521,7 +720,8 @@ function EditProductForm({ product, productId }: { product: any; productId: Id<"
                                     </div>
                                 </section>
 
-                                {/* Shipping Section */}
+                                {/* Shipping Section (physical products only) */}
+                                {form.productType === "physical" && (
                                 <section className="bg-card rounded-xl p-6 shadow-sm border border-border">
                                     <div className="flex items-center gap-2 mb-6">
                                         <Package className="size-5 text-primary" />
@@ -588,6 +788,7 @@ function EditProductForm({ product, productId }: { product: any; productId: Id<"
                                         )}
                                     </div>
                                 </section>
+                                )}
 
                                 {/* Specifications Section */}
                                 <section className="bg-card rounded-xl p-6 shadow-sm border border-border">
@@ -749,7 +950,87 @@ function EditProductForm({ product, productId }: { product: any; productId: Id<"
                                     </div>
                                 </section>
 
-                                {/* Variants */}
+                                {/* Stock Management (for digital/gift card products) */}
+                                {form.productType !== "physical" && (
+                                    <section className="bg-card rounded-xl p-6 shadow-sm border border-border">
+                                        <div className="flex items-center gap-2 mb-6">
+                                            <Layers className="size-5 text-primary" />
+                                            <h2 className="text-lg font-bold text-foreground">Stock Management</h2>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="space-y-3">
+                                                <Label className="text-sm font-medium">Stock Availability</Label>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            form.setDigitalStockMode("unlimited");
+                                                            form.setDigitalStockCount(undefined);
+                                                        }}
+                                                        className={`p-4 rounded-lg border-2 text-left transition-all ${
+                                                            form.digitalStockMode === "unlimited"
+                                                                ? "border-primary bg-primary/5"
+                                                                : "border-border hover:border-primary/40 bg-secondary/30"
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <p className="font-medium text-sm">Unlimited</p>
+                                                            <span className="text-lg">∞</span>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Product is always available for purchase
+                                                        </p>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            form.setDigitalStockMode("limited");
+                                                            if (form.digitalStockCount === undefined) {
+                                                                form.setDigitalStockCount(0);
+                                                            }
+                                                        }}
+                                                        className={`p-4 rounded-lg border-2 text-left transition-all ${
+                                                            form.digitalStockMode === "limited"
+                                                                ? "border-primary bg-primary/5"
+                                                                : "border-border hover:border-primary/40 bg-secondary/30"
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <p className="font-medium text-sm">Limited Stock</p>
+                                                            <Layers className="size-4" />
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Track specific quantity available
+                                                        </p>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {form.digitalStockMode === "limited" && (
+                                                <div className="pt-2 animate-in fade-in slide-in-from-top-2">
+                                                    <Label className="text-sm font-medium">Quantity Available</Label>
+                                                    <div className="flex items-center gap-2 mt-2">
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            placeholder="0"
+                                                            className="w-32"
+                                                            value={form.digitalStockCount ?? ""}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                form.setDigitalStockCount(val ? parseInt(val) : undefined);
+                                                            }}
+                                                        />
+                                                        <span className="text-sm text-muted-foreground">units</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </section>
+                                )}
+
+                                {/* Variants (physical products only) */}
+                                {form.productType === "physical" && (
                                 <section className="bg-card rounded-xl p-6 shadow-sm border border-border">
                                     <div className="flex items-center gap-2 mb-6">
                                         <Palette className="size-5 text-primary" />
@@ -909,6 +1190,7 @@ function EditProductForm({ product, productId }: { product: any; productId: Id<"
                                         )}
                                     </div>
                                 </section>
+                                )}
 
                                 {/* Policies & Badges */}
                                 <section className="bg-card rounded-xl p-6 shadow-sm border border-border">

@@ -51,6 +51,7 @@ export interface ProductDetail {
     warrantyLabel?: string;
     warrantySublabel?: string;
     policyContent?: string;
+    productType?: "physical" | "digital" | "gift_card";
 }
 
 // Image Gallery Component
@@ -356,7 +357,7 @@ export function ProductInfo({
                         </>
                     )}
                 </div>
-                {product.stockCount && product.stockCount <= 5 && (
+                {!!product.stockCount && product.stockCount > 0 && product.stockCount <= 5 && (
                     <p className="text-sm text-primary font-medium flex items-center gap-1">
                         <Flame className="size-4" />
                         Only {product.stockCount} left in stock!
@@ -411,9 +412,10 @@ interface ProductTabsProps {
     productId: Id<"products">;
     productName: string;
     highlightedReviewId?: string;
+    productType?: "physical" | "digital" | "gift_card";
 }
 
-export function ProductTabs({ story, features, policyContent, productId, productName, highlightedReviewId }: ProductTabsProps) {
+export function ProductTabs({ story, features, policyContent, productId, productName, highlightedReviewId, productType = "physical" }: ProductTabsProps) {
     const [activeTab, setActiveTab] = useState(highlightedReviewId ? "reviews" : "description");
 
     // Sync tab with highlightedReviewId when it changes (e.g. client-side navigation)
@@ -437,18 +439,22 @@ export function ProductTabs({ story, features, policyContent, productId, product
                             >
                                 Description
                             </TabsTrigger>
-                            <TabsTrigger
-                                value="specifications"
-                                className="px-3 sm:px-4 py-4 text-sm font-medium whitespace-nowrap data-[state=active]:font-bold data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent"
-                            >
-                                Specifications
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="shipping"
-                                className="px-3 sm:px-4 py-4 text-sm font-medium whitespace-nowrap data-[state=active]:font-bold data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent"
-                            >
-                                Shipping & Returns
-                            </TabsTrigger>
+                            {productType === "physical" && (
+                                <>
+                                    <TabsTrigger
+                                        value="specifications"
+                                        className="px-3 sm:px-4 py-4 text-sm font-medium whitespace-nowrap data-[state=active]:font-bold data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent"
+                                    >
+                                        Specifications
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="shipping"
+                                        className="px-3 sm:px-4 py-4 text-sm font-medium whitespace-nowrap data-[state=active]:font-bold data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent"
+                                    >
+                                        Shipping & Returns
+                                    </TabsTrigger>
+                                </>
+                            )}
                             <TabsTrigger
                                 value="reviews"
                                 className="px-3 sm:px-4 py-4 text-sm font-medium whitespace-nowrap data-[state=active]:font-bold data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent"
@@ -475,30 +481,34 @@ export function ProductTabs({ story, features, policyContent, productId, product
                         )}
                     </TabsContent>
 
-                    <TabsContent value="specifications" className="py-12 max-w-3xl">
-                        <h3 className="text-xl font-bold text-foreground mb-4">Specifications</h3>
-                        <div className="space-y-4 text-muted-foreground">
-                            <div className="flex justify-between py-2 border-b border-border">
-                                <span className="font-medium">Material</span>
-                                <span>100% Merino Wool</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-border">
-                                <span className="font-medium">Weight</span>
-                                <span>280g</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-border">
-                                <span className="font-medium">Care</span>
-                                <span>Machine wash cold, lay flat to dry</span>
-                            </div>
-                        </div>
-                    </TabsContent>
+                    {productType === "physical" && (
+                        <>
+                            <TabsContent value="specifications" className="py-12 max-w-3xl">
+                                <h3 className="text-xl font-bold text-foreground mb-4">Specifications</h3>
+                                <div className="space-y-4 text-muted-foreground">
+                                    <div className="flex justify-between py-2 border-b border-border">
+                                        <span className="font-medium">Material</span>
+                                        <span>100% Merino Wool</span>
+                                    </div>
+                                    <div className="flex justify-between py-2 border-b border-border">
+                                        <span className="font-medium">Weight</span>
+                                        <span>280g</span>
+                                    </div>
+                                    <div className="flex justify-between py-2 border-b border-border">
+                                        <span className="font-medium">Care</span>
+                                        <span>Machine wash cold, lay flat to dry</span>
+                                    </div>
+                                </div>
+                            </TabsContent>
 
-                    <TabsContent value="shipping" className="py-12 max-w-3xl">
-                        <h3 className="text-xl font-bold text-foreground mb-4">Shipping & Returns</h3>
-                        <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                            {policyContent || "No Shipping & Returns policy available for this product."}
-                        </p>
-                    </TabsContent>
+                            <TabsContent value="shipping" className="py-12 max-w-3xl">
+                                <h3 className="text-xl font-bold text-foreground mb-4">Shipping & Returns</h3>
+                                <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                                    {policyContent || "No Shipping & Returns policy available for this product."}
+                                </p>
+                            </TabsContent>
+                        </>
+                    )}
 
                     <TabsContent value="reviews" className="py-12 w-full">
                         {/* Review Section embedded here. We might want to remove its default padding/container if we want it to fit flush, but let's see. */}

@@ -56,6 +56,19 @@ export interface ProductFormData {
     // Options
     colorOptions?: ColorOption[];
     sizeOptions?: string[];
+    // Digital product fields
+    productType: "physical" | "digital" | "gift_card";
+    digitalFiles: Array<{
+        name: string;
+        url: string;
+        publicId: string;
+        fileType: string;
+        fileSize?: number;
+    }>;
+    maxDownloads?: number;
+    digitalStockMode?: "unlimited" | "limited";
+    digitalStockCount?: number;
+    giftCardCodeMode?: "auto" | "manual";
 }
 
 interface UseProductFormOptions {
@@ -94,6 +107,14 @@ export function useProductForm(options: UseProductFormOptions = {}) {
     const [width, setWidth] = useState(initialData?.width || "");
     const [height, setHeight] = useState(initialData?.height || "");
     const [requiresShipping, setRequiresShipping] = useState(initialData?.requiresShipping ?? true);
+
+    // Digital product state
+    const [productType, setProductType] = useState<"physical" | "digital" | "gift_card">(initialData?.productType || "physical");
+    const [digitalFiles, setDigitalFiles] = useState<ProductFormData["digitalFiles"]>(initialData?.digitalFiles || []);
+    const [maxDownloads, setMaxDownloads] = useState<number | undefined>(initialData?.maxDownloads);
+    const [digitalStockMode, setDigitalStockMode] = useState<"unlimited" | "limited">(initialData?.digitalStockMode || "unlimited");
+    const [digitalStockCount, setDigitalStockCount] = useState<number | undefined>(initialData?.digitalStockCount);
+    const [giftCardCodeMode, setGiftCardCodeMode] = useState<"auto" | "manual">(initialData?.giftCardCodeMode || "auto");
 
     // Specifications
     const [specifications, setSpecifications] = useState<Specification[]>(
@@ -286,11 +307,16 @@ export function useProductForm(options: UseProductFormOptions = {}) {
         features,
         colorOptions,
         sizeOptions,
+        productType,
+        digitalFiles,
+        maxDownloads,
+        giftCardCodeMode,
     }), [
         name, description, story, basePrice, compareAtPrice, tags, vendor,
         categoryId, status, isFeatured, shippingLabel, shippingSublabel, warrantyLabel, warrantySublabel, policyContent,
         weight, length, width, height, requiresShipping,
-        specifications, features, colorOptions, sizeOptions
+        specifications, features, colorOptions, sizeOptions,
+        productType, digitalFiles, maxDownloads, giftCardCodeMode
     ]);
 
     // Validate form
@@ -328,6 +354,12 @@ export function useProductForm(options: UseProductFormOptions = {}) {
         setSizeOptions([]);
         setVariants([]);
         setShowVariantBuilder(false);
+        setProductType("physical");
+        setDigitalFiles([]);
+        setMaxDownloads(undefined);
+        setDigitalStockMode("unlimited");
+        setDigitalStockCount(undefined);
+        setGiftCardCodeMode("auto");
         setError(null);
     }, []);
 
@@ -402,6 +434,14 @@ export function useProductForm(options: UseProductFormOptions = {}) {
         applyStockToAll,
         applyPriceAdjustmentToAll,
         updateVariant,
+
+        // Digital product
+        productType, setProductType,
+        digitalFiles, setDigitalFiles,
+        maxDownloads, setMaxDownloads,
+        digitalStockMode, setDigitalStockMode,
+        digitalStockCount, setDigitalStockCount,
+        giftCardCodeMode, setGiftCardCodeMode,
 
         // Utilities
         getFormData,

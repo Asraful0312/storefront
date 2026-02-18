@@ -22,7 +22,7 @@ import WorldIcon from "../ui/world-icon";
 import PenIcon from "../ui/pen-icon";
 
 const navItems = [
-    { id: "site", label: "Site", icon: WorldIcon, href: "/#" },
+    { id: "site", label: "Site", icon: WorldIcon, href: "/" },
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboardIcon, href: "/admin" },
     { id: "products", label: "Products", icon: PackageIcon, href: "/admin/products" },
     { id: "orders", label: "Orders", icon: ShoppingCartIcon, href: "/admin/orders" },
@@ -138,7 +138,7 @@ const SidebarItem = ({
             onMouseLeave={handleMouseLeave}
             className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
-                isActive
+               item.href !== '/' && isActive
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
             )}

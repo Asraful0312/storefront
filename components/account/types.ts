@@ -4,6 +4,7 @@ export interface OrderItem {
     id: string;
     name: string;
     image: string;
+    productType?: string;
 }
 
 export interface Order {

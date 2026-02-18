@@ -105,7 +105,9 @@ export function ProductDetailView({ product, relatedProducts = [], highlightedRe
                     policyContent={product.policyContent}
                     productId={product.id as any}
                     productName={product.name}
+
                     highlightedReviewId={highlightedReviewId}
+                    productType={product.productType}
                 />
 
                 {/* Related Products */}

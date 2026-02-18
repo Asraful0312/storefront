@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import {
     Search,
     ChevronLeft,
@@ -165,8 +163,9 @@ export default function AdminCustomersPage() {
         link.click();
     };
 
-    const exportPDF = () => {
-        const doc = new jsPDF();
+    const exportPDF = async () => {
+        const doc = new (await import("jspdf")).default();
+        const autoTable = (await import("jspdf-autotable")).default;
 
         // Add title
         doc.setFontSize(18);
@@ -182,7 +181,7 @@ export default function AdminCustomersPage() {
             user.email,
             user.role,
             user.totalOrders,
-            `$${user.totalSpent.toFixed(2)}`,
+            `$${(user.totalSpent / 100).toFixed(2)}`,
             new Date(user._creationTime).toLocaleDateString()
         ]);
 
@@ -196,7 +195,6 @@ export default function AdminCustomersPage() {
 
         doc.save(`customers_export_${new Date().toISOString().split('T')[0]}.pdf`);
     };
-
     return (
         <main className="flex-1 px-4 md:px-10 py-8 max-w-[1440px] mx-auto w-full overflow-y-auto">
             {/* Page Heading & Actions */}
@@ -307,7 +305,7 @@ export default function AdminCustomersPage() {
                         {isLoading ? (
                             <Skeleton className="h-8 w-24" />
                         ) : (
-                            <p className="text-2xl font-bold text-foreground">${totalRevenue.toFixed(0)}</p>
+                            <p className="text-2xl font-bold text-foreground">${(totalRevenue / 100).toFixed(2)}</p>
                         )}
                         {/* <p className="text-green-600 text-sm font-medium flex items-center gap-0.5">
                             <TrendingUp className="size-4" />
@@ -446,9 +444,9 @@ export default function AdminCustomersPage() {
                                             </td>
                                             <td className="px-6 py-4 text-sm text-foreground">{customer.email}</td>
                                             <td className="px-6 py-4 text-sm text-foreground text-right">{customer.totalOrders}</td>
-                                            <td className="px-6 py-4 text-sm font-semibold text-foreground text-right">
-                                                ${customer.totalSpent.toFixed(2)}
-                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        ${(customer.totalSpent / 100).toFixed(2)}
+                                    </td>
                                             <td className="px-6 py-4 text-sm text-muted-foreground text-right">
                                                 {customer.lastOrderDate
                                                     ? new Date(customer.lastOrderDate).toLocaleDateString()

@@ -20,6 +20,11 @@ import {
     Trash2,
     Loader2,
     ChevronUp,
+    Gift,
+    FileDown,
+    Send,
+    FileSpreadsheet,
+    FileJson,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +47,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn, formatDate } from "@/lib/utils";
 import { usePaginatedQuery, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -97,6 +103,9 @@ export default function AdminOrdersPage() {
 
     const updateOrderStatus = useMutation(api.orders.updateOrderStatus);
     const deleteOrder = useMutation(api.orders.deleteOrder);
+    const deliverGiftCode = useMutation(api.orders.deliverGiftCode);
+    const [giftCodeInputs, setGiftCodeInputs] = useState<Record<string, string>>({});
+    const [deliveringGiftCode, setDeliveringGiftCode] = useState<string | null>(null);
 
     const toggleExpand = (orderId: Id<"orders">) => {
         setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
@@ -124,6 +133,72 @@ export default function AdminOrdersPage() {
 
     const stats = useQuery(api.orders.getOrderStats);
 
+    const exportCSV = () => {
+        const headers = ["Order Number", "Date", "Customer Name", "Customer Email", "Status", "Total", "Items Count"];
+        const rows = results.map(order => [
+            order.orderNumber,
+            new Date(order._creationTime).toLocaleDateString(),
+            order.customer.name,
+            order.customer.email,
+            order.status,
+            (order.total / 100).toFixed(2),
+            order.items.length
+        ]);
+
+        const csvContent = [
+            headers.join(","),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `orders_export_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+    };
+
+    const exportJSON = () => {
+        const jsonContent = JSON.stringify(results, null, 2);
+        const blob = new Blob([jsonContent], { type: "application/json" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `orders_export_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+    };
+
+    const exportPDF = async () => {
+        const doc = new (await import("jspdf")).default();
+        const autoTable = (await import("jspdf-autotable")).default;
+
+        // Add title
+        doc.setFontSize(18);
+        doc.text("Orders Report", 14, 22);
+
+        doc.setFontSize(10);
+        doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
+
+        const headers = [["Order #", "Date", "Customer", "Email", "Status", "Total", "Items"]];
+        const data = results.map(order => [
+            order.orderNumber.substring(0, 8),
+            new Date(order._creationTime).toLocaleDateString(),
+            order.customer.name,
+            order.customer.email,
+            order.status,
+            `$${(order.total / 100).toFixed(2)}`,
+            order.items.length
+        ]);
+
+        autoTable(doc, {
+            head: headers,
+            body: data,
+            startY: 35,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [41, 128, 185] }
+        });
+
+        doc.save(`orders_export_${new Date().toISOString().split('T')[0]}.pdf`);
+    };
+
     return (
         <>
             {/* Main Content */}
@@ -140,10 +215,28 @@ export default function AdminOrdersPage() {
                             </p>
                         </div>
                         <div className="flex gap-3">
-                            <Button variant="outline" className="gap-2">
-                                <Upload className="size-4" />
-                                Export CSV
-                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" className="gap-2">
+                                        <Download className="size-4" />
+                                        Export
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={exportCSV}>
+                                        <FileSpreadsheet className="size-4 mr-2" />
+                                        Export as CSV
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={exportJSON}>
+                                        <FileJson className="size-4 mr-2" />
+                                        Export as JSON
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={exportPDF}>
+                                        <FileSpreadsheet className="size-4 mr-2" />
+                                        Export as PDF
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                             {/* Create Order is usually internal or checkout flow, but keeping button if manual creation needed later */}
                             <Link href="#" className={buttonVariants({ className: "gap-2 opacity-50 cursor-not-allowed" })}>
                                 <Plus className="size-4" />
@@ -413,7 +506,10 @@ export default function AdminOrdersPage() {
                                                                                     </p>
                                                                                 </>
                                                                             ) : (
-                                                                                <p className="text-sm text-muted-foreground">No shipping address provided.</p>
+                                                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                                    <Download className="size-4" />
+                                                                                    <span>Digital order — no shipping required</span>
+                                                                                </div>
                                                                             )}
                                                                         </div>
                                                                     </div>
@@ -428,30 +524,115 @@ export default function AdminOrdersPage() {
                                                                                 <div
                                                                                     key={idx}
                                                                                     className={cn(
-                                                                                        "flex items-center gap-4 p-3",
+                                                                                        "flex flex-col gap-2 p-3",
                                                                                         idx < order.items.length - 1 && "border-b border-border"
                                                                                     )}
                                                                                 >
-                                                                                    <div
-                                                                                        className="h-12 w-12 rounded bg-cover bg-center shrink-0 bg-secondary"
-                                                                                        style={item.image ? { backgroundImage: `url('${item.image}')` } : {}}
-                                                                                    />
-                                                                                    <div className="flex-1">
-                                                                                        <p className="text-sm font-medium text-foreground">
-                                                                                            {item.name}
-                                                                                        </p>
-                                                                                        <p className="text-xs text-muted-foreground">
-                                                                                            SKU: {item.sku || "N/A"}
-                                                                                        </p>
+                                                                                    <div className="flex items-center gap-4">
+                                                                                        <div
+                                                                                            className="h-12 w-12 rounded bg-cover bg-center shrink-0 bg-secondary"
+                                                                                            style={item.image ? { backgroundImage: `url('${item.image}')` } : {}}
+                                                                                        />
+                                                                                        <div className="flex-1">
+                                                                                            <div className="flex items-center gap-2">
+                                                                                                <p className="text-sm font-medium text-foreground">
+                                                                                                    {item.name}
+                                                                                                </p>
+                                                                                                {item.productType === "digital" && (
+                                                                                                    <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-blue-100 text-blue-700 border border-blue-200">
+                                                                                                        DIGITAL
+                                                                                                    </span>
+                                                                                                )}
+                                                                                                {item.productType === "gift_card" && (
+                                                                                                    <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-700 border border-purple-200">
+                                                                                                        GIFT CARD
+                                                                                                    </span>
+                                                                                                )}
+                                                                                            </div>
+                                                                                            <p className="text-xs text-muted-foreground">
+                                                                                                SKU: {item.sku || "N/A"}
+                                                                                            </p>
+                                                                                        </div>
+                                                                                        <div className="text-right">
+                                                                                            <p className="text-sm font-bold text-foreground">
+                                                                                                ${(item.price / 100).toFixed(2)}
+                                                                                            </p>
+                                                                                            <p className="text-xs text-muted-foreground">
+                                                                                                Qty: {item.quantity}
+                                                                                            </p>
+                                                                                        </div>
                                                                                     </div>
-                                                                                    <div className="text-right">
-                                                                                        <p className="text-sm font-bold text-foreground">
-                                                                                            ${(item.price / 100).toFixed(2)}
-                                                                                        </p>
-                                                                                        <p className="text-xs text-muted-foreground">
-                                                                                            Qty: {item.quantity}
-                                                                                        </p>
-                                                                                    </div>
+
+                                                                                    {/* Digital file info */}
+                                                                                    {item.productType === "digital" && item.digitalFileName && (
+                                                                                        <div className="ml-16 flex items-center gap-2 text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/30 px-3 py-1.5 rounded">
+                                                                                            <FileDown className="size-3.5" />
+                                                                                            <span>{item.digitalFileName}</span>
+                                                                                            {item.maxDownloads && (
+                                                                                                <span className="text-muted-foreground">• {item.downloadCount || 0}/{item.maxDownloads} downloads</span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    )}
+
+                                                                                    {/* Gift card code display / delivery */}
+                                                                                    {item.productType === "gift_card" && (
+                                                                                        <div className="ml-16">
+                                                                                            {item.giftCardCode ? (
+                                                                                                <div className="flex items-center gap-2 text-xs bg-green-50 dark:bg-green-950/30 px-3 py-1.5 rounded">
+                                                                                                    <Gift className="size-3.5 text-green-600" />
+                                                                                                    <span className="font-mono font-semibold text-green-700 dark:text-green-400">{item.giftCardCode}</span>
+                                                                                                    <span className="text-green-600">✓ Delivered</span>
+                                                                                                </div>
+                                                                                            ) : (
+                                                                                                <div className="flex items-center gap-2">
+                                                                                                    <Input
+                                                                                                        placeholder="Enter gift card code..."
+                                                                                                        className="h-7 text-xs w-48 font-mono"
+                                                                                                        value={giftCodeInputs[`${order._id}-${idx}`] || ""}
+                                                                                                        onChange={(e) => setGiftCodeInputs(prev => ({
+                                                                                                            ...prev,
+                                                                                                            [`${order._id}-${idx}`]: e.target.value
+                                                                                                        }))}
+                                                                                                        onClick={(e) => e.stopPropagation()}
+                                                                                                    />
+                                                                                                    <Button
+                                                                                                        size="sm"
+                                                                                                        className="h-7 text-xs gap-1"
+                                                                                                        disabled={!giftCodeInputs[`${order._id}-${idx}`] || deliveringGiftCode === `${order._id}-${idx}`}
+                                                                                                        onClick={async (e) => {
+                                                                                                            e.stopPropagation();
+                                                                                                            const key = `${order._id}-${idx}`;
+                                                                                                            setDeliveringGiftCode(key);
+                                                                                                            try {
+                                                                                                                await deliverGiftCode({
+                                                                                                                    orderId: order._id,
+                                                                                                                    itemIndex: idx,
+                                                                                                                    giftCardCode: giftCodeInputs[key],
+                                                                                                                });
+                                                                                                                toast.success("Gift card code delivered!");
+                                                                                                                setGiftCodeInputs(prev => {
+                                                                                                                    const next = { ...prev };
+                                                                                                                    delete next[key];
+                                                                                                                    return next;
+                                                                                                                });
+                                                                                                            } catch (err) {
+                                                                                                                toast.error("Failed to deliver gift code");
+                                                                                                            } finally {
+                                                                                                                setDeliveringGiftCode(null);
+                                                                                                            }
+                                                                                                        }}
+                                                                                                    >
+                                                                                                        {deliveringGiftCode === `${order._id}-${idx}` ? (
+                                                                                                            <Loader2 className="size-3 animate-spin" />
+                                                                                                        ) : (
+                                                                                                            <Send className="size-3" />
+                                                                                                        )}
+                                                                                                        Deliver
+                                                                                                    </Button>
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    )}
                                                                                 </div>
                                                                             ))}
                                                                         </div>

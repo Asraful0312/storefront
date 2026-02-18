@@ -34,6 +34,7 @@ export interface AdminProduct {
     stockLevel: number;
     stockStatus: StockStatus;
     status: string;
+    productType?: string;
 }
 
 interface ProductsTableProps {
@@ -127,19 +128,34 @@ export function ProductsTable({ products, onEdit, onDelete, totalCount, filtered
                                     </td>
 
                                     <td className="px-6 py-3">
-                                        <div className="flex flex-col gap-1.5 w-full max-w-[120px]">
-                                            <div className="flex justify-between text-xs">
-                                                <span className="font-medium text-foreground">{product.stockLevel}</span>
-                                                <span className={stockConfig.className}>{stockConfig.label}</span>
+                                        {product.stockLevel === -1 ? (
+                                            /* Digital / Gift Card — unlimited stock */
+                                            <div className="flex flex-col gap-1.5 w-full max-w-[120px]">
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="font-medium text-foreground">∞</span>
+                                                    <span className="text-green-600 dark:text-green-400">Unlimited</span>
+                                                </div>
+                                                <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                                                    <div className="h-full rounded-full bg-green-500" style={{ width: '100%' }}/>
+                                                </div>
                                             </div>
-                                            <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-                                                <div
-                                                    className={cn("h-full rounded-full", stockConfig.barClass)}
-                                                    style={{ width: `${stockPercent}%` }}
-                                                />
+                                        ) : (
+                                            <div className="flex flex-col gap-1.5 w-full max-w-[120px]">
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="font-medium text-foreground">{product.stockLevel}</span>
+                                                    <span className={stockConfig.className}>{stockConfig.label}</span>
+                                                </div>
+                                                <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                                                    <div
+                                                        className={cn("h-full rounded-full", stockConfig.barClass)}
+                                                        style={{ width: `${stockPercent}%` }}
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground mt-1">All variant combined</p>
+                                        )}
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            {product.stockLevel === -1 ? "Digital product" : "All variant combined"}
+                                        </p>
                                     </td>
                                     <td className="px-6 py-3">
                                         <StatusCell status={product.status} productId={product.id} />

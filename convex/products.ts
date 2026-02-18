@@ -24,7 +24,7 @@ function generateSlug(name: string): string {
 }
 
 // Helper to enrich products with variant and category data
-async function enrichProducts(ctx: QueryCtx, products: Doc<"products">[]) {
+export async function enrichProducts(ctx: QueryCtx, products: Doc<"products">[]) {
     return await Promise.all(
         products.map(async (product) => {
             const variants = await ctx.db
@@ -34,10 +34,38 @@ async function enrichProducts(ctx: QueryCtx, products: Doc<"products">[]) {
 
             const totalStock = variants.reduce((sum, v) => sum + v.stockCount, 0);
 
-            // Infer stock status based on stock level
+            // Digital and gift card products use digitalStockMode/digitalStockCount
+            const isDigitalProduct = product.productType === "digital" || product.productType === "gift_card";
+            const digitalStockMode = product.digitalStockMode || "unlimited";
+
+            // Determine effective stock for display
+            let effectiveStock: number;
+            if (isDigitalProduct) {
+                if (digitalStockMode === "limited" && product.digitalStockCount !== undefined) {
+                    effectiveStock = product.digitalStockCount;
+                } else {
+                    effectiveStock = -1; // unlimited
+                }
+            } else {
+                effectiveStock = totalStock;
+            }
+
+            // Infer stock status
             let stockStatus: "in-stock" | "low-stock" | "out-of-stock" = "in-stock";
-            if (totalStock === 0) stockStatus = "out-of-stock";
-            else if (totalStock < 10) stockStatus = "low-stock";
+            if (isDigitalProduct) {
+                if (digitalStockMode === "limited" && product.digitalStockCount !== undefined) {
+                    if (product.digitalStockCount === 0) {
+                        stockStatus = "out-of-stock";
+                    } else if (product.digitalStockCount < 10) {
+                        stockStatus = "low-stock";
+                    }
+                }
+                // unlimited digital products are always in-stock
+            } else if (totalStock === 0) {
+                stockStatus = "out-of-stock";
+            } else if (totalStock < 10) {
+                stockStatus = "low-stock";
+            }
 
             const category = product.categoryId
                 ? await ctx.db.get(product.categoryId)
@@ -59,12 +87,12 @@ async function enrichProducts(ctx: QueryCtx, products: Doc<"products">[]) {
             return {
                 ...product,
                 variantCount: variants.length,
-                totalStock,
+                totalStock: effectiveStock,
                 stockStatus,
                 categoryName: category?.name,
                 category: category?.name,
                 sku: defaultVariant?.sku || "—",
-                defaultVariantId: defaultVariant?._id, // Added this field
+                defaultVariantId: defaultVariant?._id,
                 image: product.featuredImage,
                 reviewCount: reviews.length,
                 rating,
@@ -705,6 +733,29 @@ export const create = mutation({
         warrantySublabel: v.optional(v.string()),
         policyContent: v.optional(v.string()),
         isFeatured: v.optional(v.boolean()),
+        // Digital product fields
+        productType: v.optional(
+            v.union(v.literal("physical"), v.literal("digital"), v.literal("gift_card"))
+        ),
+        digitalFiles: v.optional(
+            v.array(
+                v.object({
+                    name: v.string(),
+                    url: v.string(),
+                    publicId: v.string(),
+                    fileType: v.string(),
+                    fileSize: v.optional(v.number()),
+                })
+            )
+        ),
+        maxDownloads: v.optional(v.number()),
+        digitalStockMode: v.optional(
+            v.union(v.literal("unlimited"), v.literal("limited"))
+        ),
+        digitalStockCount: v.optional(v.number()),
+        giftCardCodeMode: v.optional(
+            v.union(v.literal("auto"), v.literal("manual"))
+        ),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -746,6 +797,8 @@ export const create = mutation({
             ...args,
             slug: finalSlug,
             featuredImage,
+            productType: args.productType || "physical",
+            requiresShipping: (args.productType === "digital" || args.productType === "gift_card") ? false : args.requiresShipping,
             publishedAt: args.status === "active" ? Date.now() : undefined,
         });
 
@@ -825,6 +878,29 @@ export const update = mutation({
         warrantySublabel: v.optional(v.string()),
         policyContent: v.optional(v.string()),
         isFeatured: v.optional(v.boolean()),
+        // Digital product fields
+        productType: v.optional(
+            v.union(v.literal("physical"), v.literal("digital"), v.literal("gift_card"))
+        ),
+        digitalFiles: v.optional(
+            v.array(
+                v.object({
+                    name: v.string(),
+                    url: v.string(),
+                    publicId: v.string(),
+                    fileType: v.string(),
+                    fileSize: v.optional(v.number()),
+                })
+            )
+        ),
+        maxDownloads: v.optional(v.number()),
+        digitalStockMode: v.optional(
+            v.union(v.literal("unlimited"), v.literal("limited"))
+        ),
+        digitalStockCount: v.optional(v.number()),
+        giftCardCodeMode: v.optional(
+            v.union(v.literal("auto"), v.literal("manual"))
+        ),
     },
     handler: async (ctx, args) => {
         const { id, ...updates } = args;
@@ -865,14 +941,29 @@ export const update = mutation({
             publishedAt,
         }
 
+        // Force requiresShipping for non-physical products
+        const effectiveUpdates = { ...updates };
+        if (effectiveUpdates.productType === "digital" || effectiveUpdates.productType === "gift_card") {
+            effectiveUpdates.requiresShipping = false;
+        }
+
         await ctx.db.patch(id, {
-            ...updates,
+            ...effectiveUpdates,
             featuredImage,
             publishedAt,
         });
 
-        // Sync with aggregate
-        await productStats.replace(ctx, product, newProduct);
+        // Sync with aggregate (gracefully handle missing keys from pre-aggregate products)
+        try {
+            await productStats.replace(ctx, product, newProduct);
+        } catch (err) {
+            console.warn("productStats.replace failed during update, attempting insert:", err);
+            try {
+                await productStats.insert(ctx, newProduct);
+            } catch {
+                console.warn("productStats.insert also failed during update, skipping aggregate sync");
+            }
+        }
 
         return id;
     },
@@ -902,8 +993,17 @@ export const archive = mutation({
         const newProduct = { ...product, status: "archived" as const };
         await ctx.db.patch(args.id, { status: "archived" });
 
-        // Sync with aggregate
-        await productStats.replace(ctx, product, newProduct);
+        // Sync with aggregate (gracefully handle missing keys from pre-aggregate products)
+        try {
+            await productStats.replace(ctx, product, newProduct);
+        } catch (err) {
+            console.warn("productStats.replace failed during archive, attempting insert:", err);
+            try {
+                await productStats.insert(ctx, newProduct);
+            } catch {
+                console.warn("productStats.insert also failed during archive, skipping aggregate sync");
+            }
+        }
     },
 });
 
@@ -941,8 +1041,12 @@ export const hardDelete = mutation({
         // Delete product
         await ctx.db.delete(args.id);
 
-        // Sync with aggregate
-        await productStats.delete(ctx, product);
+        // Sync with aggregate (gracefully handle missing keys)
+        try {
+            await productStats.delete(ctx, product);
+        } catch (err) {
+            console.warn("productStats.delete failed during hard delete, skipping:", err);
+        }
     },
 });
 

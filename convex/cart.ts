@@ -1,7 +1,8 @@
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 // Get cart items with details
 export const get = query({
@@ -46,6 +47,7 @@ export const get = query({
                         price: variant ? (product.basePrice + (variant.priceAdjustment || 0)) : product.basePrice,
                         image: variant?.imageUrl || product.images[0]?.url,
                         slug: product.slug,
+                        productType: product.productType,
                         // Shipping & Tax Fields
                         weight: product.weight || 0,
                         dimensions: product.dimensions,
@@ -101,6 +103,7 @@ export const getGuest = query({
                         price: variant ? (product.basePrice + (variant.priceAdjustment || 0)) : product.basePrice,
                         image: variant?.imageUrl || product.images[0]?.url,
                         slug: product.slug,
+                        productType: product.productType,
                         // Shipping & Tax Fields
                         weight: product.weight || 0,
                         dimensions: product.dimensions,
@@ -282,4 +285,100 @@ export const sync = mutation({
             }
         }
     },
+});
+
+// ==================== COUPON HANDLING ====================
+
+export const getAppliedCoupon = query({
+    args: {},
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) return null;
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+            .unique();
+
+        if (!user) return null;
+
+        const metadata = await ctx.db
+            .query("cartMetadata")
+            .withIndex("by_userId", (q) => q.eq("userId", user._id))
+            .unique();
+
+        return metadata?.couponCode || null;
+    }
+});
+
+export const applyCoupon = mutation({
+    args: { code: v.string() },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthenticated");
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+            .unique();
+
+        if (!user) throw new Error("User not found");
+
+        // Validate coupon logic (basic active check, can rely on validateCoupon on frontend, but good to check here too)
+        // We can just trust the caller or do a quick lookup. 
+        // Let's do a quick lookup to ensure it exists.
+        const coupon = await ctx.db
+            .query("coupons")
+            .withIndex("by_code", (q) => q.eq("code", args.code))
+            .first();
+        
+        if (!coupon || !coupon.isActive) {
+            throw new Error("Invalid coupon");
+        }
+
+        const metadata = await ctx.db
+            .query("cartMetadata")
+            .withIndex("by_userId", (q) => q.eq("userId", user._id))
+            .unique();
+
+        if (metadata) {
+            await ctx.db.patch(metadata._id, { couponCode: args.code });
+        } else {
+            await ctx.db.insert("cartMetadata", { userId: user._id, couponCode: args.code });
+        }
+    }
+});
+
+export const removeCoupon = mutation({
+    args: {},
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) return; // Silent fail if optional
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+            .unique();
+
+        if (!user) return;
+
+        const metadata = await ctx.db
+            .query("cartMetadata")
+            .withIndex("by_userId", (q) => q.eq("userId", user._id))
+            .unique();
+
+        if (metadata) {
+            await ctx.db.patch(metadata._id, { couponCode: undefined });
+        }
+    }
+});
+
+export const getMetadata = internalQuery({
+    args: { userId: v.id("users") },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("cartMetadata")
+            .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+            .unique();
+    }
 });
