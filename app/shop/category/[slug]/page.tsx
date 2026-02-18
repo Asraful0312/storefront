@@ -83,22 +83,26 @@ export default function CategoryPage() {
         { label: category.name },
     ];
 
-    // Transform API products to ProductListItem
-    const products: ProductListItem[] = productsData ? productsData.map(p => ({
+    // Transform API products to Product
+    const products: any[] = productsData ? productsData.map(p => ({
         id: p._id,
         name: p.name,
+        category: p.categoryName || "Uncategorized",
+        slug: p.slug,
         price: p.basePrice / 100,
         originalPrice: p.compareAtPrice ? p.compareAtPrice / 100 : undefined,
         image: p.images.find(img => img.isMain)?.url || p.images[0]?.url || "",
-        badge: p.isFeatured ? "new" : undefined, // Mapping featured to new as 'featured' is not in type
-        rating: 0, // Not yet in schema
-        reviewCount: 0, // Not yet in schema
+        badge: p.isFeatured ? "new" : undefined,
+        rating: p.rating || 0,
+        reviewCount: p.reviewCount || 0,
+        defaultVariantId: p.defaultVariantId,
     })) : [];
 
     // Transform categories for sidebar (flattened or tree? FilterSidebar expects Category[])
     const sidebarCategories: Category[] = allCategories ? allCategories.map(c => ({
         id: c._id,
         name: c.name,
+        slug: c.slug,
         count: 0 // Count not readily available without separate aggregation
     })) : [];
 

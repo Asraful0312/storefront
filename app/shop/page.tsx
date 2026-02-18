@@ -126,18 +126,21 @@ export default function ShopPage() {
         handleFiltersChange({ ...filters, sortBy: value });
     };
 
-    const products: ProductListItem[] = data?.products.map(p => ({
+    // Transform API products to Product
+    // Use `any` effectively or cast, but the structure must match Product interface
+    const products: any[] = data ? data.products.map(p => ({
         id: p._id,
         name: p.name,
+        category: p.categoryName || "Uncategorized",
+        slug: p.slug,
         price: p.basePrice / 100,
         originalPrice: p.compareAtPrice ? p.compareAtPrice / 100 : undefined,
         image: p.images.find(img => img.isMain)?.url || p.images[0]?.url || "",
         badge: p.isFeatured ? "new" : undefined,
         rating: p.rating || 0,
         reviewCount: p.reviewCount || 0,
-        slug: p.slug,
         defaultVariantId: p.defaultVariantId,
-    })) || [];
+    })) : [];
 
     // Recursive helper to map categories for sidebar (converting _id to id/slug use)
     const mapCategoryForSidebar = (cat: any): Category => ({

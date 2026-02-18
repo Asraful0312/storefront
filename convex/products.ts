@@ -265,24 +265,7 @@ export const listActive = query({
                 .slice(0, limit);
 
             // Enrich
-            return await Promise.all(
-                allProducts.map(async (product) => {
-                    const reviews = await ctx.db
-                        .query("reviews")
-                        .withIndex("by_productId", (q) => q.eq("productId", product._id))
-                        .filter((q) => q.eq(q.field("status"), "approved"))
-                        .collect();
-
-                    return {
-                        ...product,
-                        reviewCount: reviews.length,
-                        rating:
-                            reviews.length > 0
-                                ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-                                : 0,
-                    };
-                })
-            );
+            return await enrichProducts(ctx, allProducts);
         }
 
         // Default: just get newest active products
@@ -292,25 +275,8 @@ export const listActive = query({
             .order("desc")
             .take(limit);
 
-        // Add review stats
-        return await Promise.all(
-            products.map(async (product) => {
-                const reviews = await ctx.db
-                    .query("reviews")
-                    .withIndex("by_productId", (q) => q.eq("productId", product._id))
-                    .filter((q) => q.eq(q.field("status"), "approved"))
-                    .collect();
-
-                return {
-                    ...product,
-                    reviewCount: reviews.length,
-                    rating:
-                        reviews.length > 0
-                            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-                            : 0,
-                };
-            })
-        );
+        // Add review stats and other details
+        return await enrichProducts(ctx, products);
     },
 });
 

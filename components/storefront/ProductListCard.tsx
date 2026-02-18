@@ -14,6 +14,18 @@ import { Id } from "@/convex/_generated/dataModel";
 import { ProductCard } from "./ProductCard";
 import { useCurrency } from "@/lib/currency-context";
 
+export interface ProductListItem {
+    id: Id<"products">;
+    name: string;
+    price: number;
+    originalPrice?: number;
+    image: string;
+    badge?: "new" | "sale" | "soldout";
+    rating: number;
+    reviewCount: number;
+    defaultVariantId?: string; // or Id<"productVariants">
+}
+
 export interface Product {
     id: string;
     name: string;

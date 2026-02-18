@@ -1,0 +1,20 @@
+▲ Next.js 16.1.4 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.7s
+  Running TypeScript ...
+Failed to compile.
+
+./app/shop/category/[slug]/page.tsx:99:11
+Type error: Type '{ id: Id<"categories">; name: string; count: number; }[]' is not assignable to type 'Category[]'.
+  Property 'slug' is missing in type '{ id: Id<"categories">; name: string; count: number; }' but required in type 'Category'.
+
+[0m [90m  97 |[39m
+ [90m  98 |[39m     [90m// Transform categories for sidebar (flattened or tree? FilterSidebar expects Category[])[39m
+[31m[1m>[22m[39m[90m  99 |[39m     [36mconst[39m sidebarCategories[33m:[39m [33mCategory[39m[] [33m=[39m allCategories [33m?[39m allCategories[33m.[39mmap(c [33m=>[39m ({
+ [90m     |[39m           [31m[1m^[22m[39m
+ [90m 100 |[39m         id[33m:[39m c[33m.[39m_id[33m,[39m
+ [90m 101 |[39m         name[33m:[39m c[33m.[39mname[33m,[39m
+ [90m 102 |[39m         count[33m:[39m [35m0[39m [90m// Count not readily available without separate aggregation[39m[0m
+Next.js build worker exited with code: 1 and signal: null

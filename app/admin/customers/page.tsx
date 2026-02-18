@@ -138,7 +138,7 @@ export default function AdminCustomersPage() {
             user.email,
             user.role,
             user.totalOrders,
-            user.totalSpent.toFixed(2),
+            (user.totalSpent / 100).toFixed(2),
             new Date(user._creationTime).toLocaleDateString()
         ]);
 

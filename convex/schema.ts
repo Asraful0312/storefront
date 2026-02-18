@@ -320,6 +320,7 @@ export default defineSchema({
     customerEmail: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
     trackingNumber: v.optional(v.string()),
+    
   })
     .index("by_userId", ["userId"])
     .index("by_orderNumber", ["orderNumber"])

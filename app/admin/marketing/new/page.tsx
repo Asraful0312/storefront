@@ -24,7 +24,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
 
@@ -43,7 +43,7 @@ export default function CreateCouponPage() {
     const [endDate, setEndDate] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const createCoupon = useMutation(api.coupons.createCoupon);
+    const createCoupon = useAction(api.coupons.createCoupon);
     const router = useRouter();
 
     const handleCreateCoupon = async () => {

@@ -25,7 +25,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
 import { Id } from "@/convex/_generated/dataModel";
@@ -49,7 +49,7 @@ export default function EditCouponPage({ params }: { params: { couponId: Id<"cou
     const [isActive, setIsActive] = useState(true);
 
     const coupon = useQuery(api.coupons.getCouponById, { id: couponId });
-    const updateCoupon = useMutation(api.coupons.updateCoupon);
+    const updateCoupon = useAction(api.coupons.updateCoupon);
     const router = useRouter();
 
     useEffect(() => {

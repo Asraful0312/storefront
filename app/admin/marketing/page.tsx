@@ -20,7 +20,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-import { usePaginatedQuery, useQuery, useMutation } from "convex/react";
+import { usePaginatedQuery, useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useDebounce } from "@/lib/hooks";
@@ -59,8 +59,8 @@ export default function MarketingPage() {
 
     const stats = useQuery(api.coupons.getMarketingStats);
 
-    const updateCoupon = useMutation(api.coupons.updateCoupon);
-    const deleteCoupon = useMutation(api.coupons.deleteCoupon);
+    const updateCoupon = useAction(api.coupons.updateCoupon);
+    const deleteCoupon = useAction(api.coupons.deleteCoupon);
 
     // Determine which coupons to show
     // If we have a search term, use searchResults. Otherwise use paginated results.

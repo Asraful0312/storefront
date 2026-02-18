@@ -390,6 +390,40 @@ export const updateUserRole = mutation({
     },
 });
 
+/**
+ * Admin: Update user tags and notes
+ */
+export const updateUserAdminInfo = mutation({
+    args: {
+        userId: v.id("users"),
+        tags: v.optional(v.array(v.string())),
+        notes: v.optional(v.string()),
+    },
+    returns: v.null(),
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Unauthenticated");
+        }
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+            .unique();
+
+        if (!user || user.role !== "admin") {
+            throw new Error("Unauthorized");
+        }
+
+        await ctx.db.patch(args.userId, {
+            tags: args.tags,
+            notes: args.notes,
+        });
+
+        return null;
+    },
+});
+
 // ... (updateUserAdminInfo - no aggregation change needed)
 
 /**

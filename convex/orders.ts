@@ -3,6 +3,7 @@ import { query, mutation, internalMutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
 // Validators
+// Validators
 const orderItemValidator = v.object({
     productId: v.id("products"),
     variantId: v.optional(v.id("productVariants")),
@@ -12,6 +13,10 @@ const orderItemValidator = v.object({
     price: v.number(),
     image: v.optional(v.string()),
     // Digital fields
+    productType: v.optional(v.string()), // Added productType
+    digitalFileUrl: v.optional(v.string()), // Added
+    digitalFileName: v.optional(v.string()), // Added
+    giftCardCode: v.optional(v.string()), // Added
     downloadCount: v.optional(v.number()), // Number of times downloaded
     maxDownloads: v.optional(v.number()), // Limit from product at time of purchase
 });
@@ -39,6 +44,7 @@ const orderValidator = v.object({
     shippingAddressId: v.optional(v.id("addresses")),
     paymentMethod: v.optional(v.string()),
     trackingNumber: v.optional(v.string()),
+    customerEmail: v.optional(v.string()), // Added customerEmail
 });
 
 /**

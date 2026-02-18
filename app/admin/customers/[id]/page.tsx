@@ -207,7 +207,7 @@ export default function CustomerDetailsPage({
                                                 return (
                                                     <tr key={order._id} className="hover:bg-secondary/30 transition-colors">
                                                         <td className="px-6 py-4 font-medium text-foreground">
-                                                            #{order.orderNumber}
+                                                            #{order.orderNumber.substring(0, 16)}
                                                         </td>
                                                         <td className="px-6 py-4 text-muted-foreground text-sm">
                                                             {new Date(order._creationTime).toLocaleDateString()}
@@ -218,7 +218,7 @@ export default function CustomerDetailsPage({
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4 text-right font-semibold">
-                                                            ${order.total.toFixed(2)}
+                                                            ${(order.total / 100).toFixed(2)}
                                                         </td>
                                                     </tr>
                                                 );
@@ -266,13 +266,13 @@ export default function CustomerDetailsPage({
                                 <div className="flex justify-between items-start">
                                     <p className="text-muted-foreground text-sm font-medium">Lifetime Value</p>
                                 </div>
-                                <p className="text-foreground text-2xl font-bold">${lifetimeValue.toFixed(2)}</p>
+                                <p className="text-foreground text-2xl font-bold">${(lifetimeValue / 100).toFixed(2)}</p>
                             </div>
                             <div className="flex flex-col gap-2 rounded-xl p-6 bg-card border border-border shadow-sm">
                                 <div className="flex justify-between items-start">
                                     <p className="text-muted-foreground text-sm font-medium">Avg Order Value</p>
                                 </div>
-                                <p className="text-foreground text-2xl font-bold">${avgOrderValue.toFixed(2)}</p>
+                                <p className="text-foreground text-2xl font-bold">${(avgOrderValue / 100).toFixed(2)}</p>
                             </div>
                             <div className="flex flex-col gap-2 rounded-xl p-6 bg-card border border-border shadow-sm">
                                 <div className="flex justify-between items-start">

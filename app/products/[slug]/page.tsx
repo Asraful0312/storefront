@@ -15,7 +15,7 @@ import Link from "next/link";
 
 // Reviews Section Component
 function ReviewsSection({ productId }: { productId: string }) {
-    const reviews = useQuery(api.reviews.listByProduct, {
+    const reviews = useQuery(api.reviews.list, {
         productId: productId as any,
         limit: 10,
     });
@@ -55,12 +55,12 @@ function ReviewsSection({ productId }: { productId: string }) {
                                 <div
                                     className="h-full bg-primary"
                                     style={{
-                                        width: `${stats.count > 0 ? (stats.distribution[star] / stats.count) * 100 : 0}%`,
+                                        width: `${stats.count > 0 ? (stats.breakdown[star - 1] / stats.count) * 100 : 0}%`,
                                     }}
                                 />
                             </div>
                             <span className="text-xs text-muted-foreground w-8">
-                                {stats.distribution[star]}
+                                {stats.breakdown[star - 1]}
                             </span>
                         </div>
                     ))}
