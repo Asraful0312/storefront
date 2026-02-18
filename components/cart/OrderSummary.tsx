@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import type { OrderSummaryData } from "./types";
+import { useCurrency } from "@/lib/currency-context";
 
 interface OrderSummaryProps {
     summary: OrderSummaryData;
@@ -13,6 +14,7 @@ interface OrderSummaryProps {
 }
 
 export function OrderSummary({ summary, onCheckout }: OrderSummaryProps) {
+    const { formatDollarPrice } = useCurrency();
 
 
     return (
@@ -29,25 +31,25 @@ export function OrderSummary({ summary, onCheckout }: OrderSummaryProps) {
                     <div className="flex justify-between text-muted-foreground">
                         <span>Subtotal</span>
                         <span className="font-medium text-foreground">
-                            ${summary.subtotal.toFixed(2)}
+                            {formatDollarPrice(summary.subtotal)}
                         </span>
                     </div>
                     <div className="flex justify-between text-muted-foreground">
                         <span>Shipping estimate</span>
                         <span className="font-medium text-foreground">
-                            ${summary.shipping.toFixed(2)}
+                            {formatDollarPrice(summary.shipping)}
                         </span>
                     </div>
                     <div className="flex justify-between text-muted-foreground">
                         <span>Tax estimate</span>
                         <span className="font-medium text-foreground">
-                            ${summary.tax.toFixed(2)}
+                            {formatDollarPrice(summary.tax)}
                         </span>
                     </div>
                     {summary.promoDiscount && summary.promoDiscount > 0 && (
                         <div className="flex justify-between text-green-600">
                             <span>Promo discount</span>
-                            <span className="font-medium">-${summary.promoDiscount.toFixed(2)}</span>
+                            <span className="font-medium">-{formatDollarPrice(summary.promoDiscount)}</span>
                         </div>
                     )}
                 </div>
@@ -60,7 +62,7 @@ export function OrderSummary({ summary, onCheckout }: OrderSummaryProps) {
                 <div className="flex justify-between items-center">
                     <span className="text-lg font-bold text-foreground">Order Total</span>
                     <span className="text-2xl font-black text-foreground">
-                        ${summary.total.toFixed(2)}
+                        {formatDollarPrice(summary.total)}
                     </span>
                 </div>
 

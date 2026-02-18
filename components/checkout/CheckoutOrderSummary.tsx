@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { CheckoutItem } from "./types";
+import { useCurrency } from "@/lib/currency-context";
 
 interface CheckoutOrderSummaryProps {
     items: CheckoutItem[];
@@ -39,6 +40,7 @@ export function CheckoutOrderSummary({
     hideButton,
 }: CheckoutOrderSummaryProps) {
     const [discountInput, setDiscountInput] = useState("");
+    const { formatDollarPrice } = useCurrency();
 
     const handleApplyDiscount = () => {
         if (discountInput.trim() && onApplyDiscount) {
@@ -72,7 +74,7 @@ export function CheckoutOrderSummary({
                                 <p className="text-xs text-muted-foreground mt-1">{item.variant}</p>
                             </div>
                             <span className="text-sm font-medium">
-                                ${(item.price * item.quantity).toFixed(2)}
+                                {formatDollarPrice(item.price * item.quantity)}
                             </span>
                         </div>
                     ))}
@@ -112,23 +114,23 @@ export function CheckoutOrderSummary({
                 <div className="flex flex-col gap-3 pt-6 border-t border-dashed border-border">
                     <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Subtotal</span>
-                        <span className="font-medium text-foreground">${subtotal.toFixed(2)}</span>
+                        <span className="font-medium text-foreground">{formatDollarPrice(subtotal)}</span>
                     </div>
                     <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Shipping</span>
                         <span className={shipping === 0 ? "text-green-600 font-medium" : "font-medium text-foreground"}>
-                            {shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}
+                            {shipping === 0 ? "Free" : formatDollarPrice(shipping)}
                         </span>
                     </div>
                     <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Tax (estimated)</span>
-                        <span className="font-medium text-foreground">${tax.toFixed(2)}</span>
+                        <span className="font-medium text-foreground">{formatDollarPrice(tax)}</span>
                     </div>
 
                     {discountAmount > 0 && (
                         <div className="flex justify-between text-sm text-green-600 font-medium">
                             <span>Discount</span>
-                            <span>-${discountAmount.toFixed(2)}</span>
+                            <span>-{formatDollarPrice(discountAmount)}</span>
                         </div>
                     )}
 
@@ -137,9 +139,8 @@ export function CheckoutOrderSummary({
                     <div className="flex justify-between items-center">
                         <span className="text-base font-bold">Total</span>
                         <div className="flex items-end gap-2">
-                            <span className="text-xs text-muted-foreground mb-1">USD</span>
                             <span className="text-xl font-black tracking-tight text-primary">
-                                ${(total < 0 ? 0 : total).toFixed(2)}
+                                {formatDollarPrice(total < 0 ? 0 : total)}
                             </span>
                         </div>
                     </div>

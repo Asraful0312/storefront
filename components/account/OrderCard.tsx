@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Order, OrderStatus } from "./types";
+import { useCurrency } from "@/lib/currency-context";
 
 interface OrderCardProps {
     order: Order;
@@ -56,10 +57,12 @@ export function OrderCard({ order, onReorder }: OrderCardProps) {
     const showTrack = order.status === "shipped";
     const remainingItems = order.items.length > 3 ? order.items.length - 2 : 0;
 
+    const { formatPrice } = useCurrency();
+
     // Convert price from cents to dollars if it looks like cents (large number)
     // Actually, backend 'total' comes from Stripe 'amount_total' which is CENTS.
     // So we should always divide by 100.
-    const displayTotal = order.total / 100;
+    const displayTotal = formatPrice(order.total);
 
     // Truncate long order IDs (Stripe IDs are long)
     const displayId = order.orderId.length > 10
@@ -147,7 +150,7 @@ export function OrderCard({ order, onReorder }: OrderCardProps) {
                                 : "text-foreground"
                         )}
                     >
-                        ${displayTotal.toFixed(2)}
+                        {displayTotal}
                     </span>
                     <div className="flex gap-2">
                         {showTrack && (

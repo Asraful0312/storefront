@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
 import { Id } from "@/convex/_generated/dataModel";
 import { useQueryState, parseAsString } from "@fobos531/nuqs";
+import { useCurrency } from "@/lib/currency-context";
 
 interface ProductDetailViewProps {
     product: ProductDetail;
@@ -25,7 +26,7 @@ interface ProductDetailViewProps {
 
 export function ProductDetailView({ product, relatedProducts = [], highlightedReviewId }: ProductDetailViewProps) {
     const { addItem } = useCart();
-    // ... (existing code omitted for brevity) ...
+    const { formatDollarPrice } = useCurrency();
     // Determine default color/size from product
     const defaultColor = product.colors && product.colors.length > 0 ? product.colors[0].id : undefined;
     const defaultSize = product.sizes && product.sizes.length > 0 ? product.sizes[0] : undefined;
@@ -158,11 +159,11 @@ export function ProductDetailView({ product, relatedProducts = [], highlightedRe
                                                     className={`text-sm font-medium ${p.originalPrice ? "text-red-500" : "text-muted-foreground"
                                                         }`}
                                                 >
-                                                    ${p.price.toFixed(2)}
+                                                    {formatDollarPrice(p.price)}
                                                 </span>
                                                 {p.originalPrice && (
                                                     <span className="text-xs text-muted-foreground line-through">
-                                                        ${p.originalPrice.toFixed(2)}
+                                                        {formatDollarPrice(p.originalPrice)}
                                                     </span>
                                                 )}
                                                 {p.rating > 0 && (

@@ -463,6 +463,13 @@ export default defineSchema({
     })),
   }),
 
+  // Exchange Rates - Cached currency rates (base: USD)
+  exchangeRates: defineTable({
+    base: v.string(), // "USD"
+    rates: v.any(), // { BDT: 119.5, EUR: 0.92, GBP: 0.79, ... }
+    updatedAt: v.number(), // timestamp ms
+  }).index("by_base", ["base"]),
+
   // Shopping Cart
   cartItems: defineTable({
     userId: v.id("users"),

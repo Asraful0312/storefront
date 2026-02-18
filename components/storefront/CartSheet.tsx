@@ -9,16 +9,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
-// import { formatPrice } from "@/lib/utils"; // Removed as defined locally or utility doesn't exist yet
+import { useCurrency } from "@/lib/currency-context";
 
 export function CartSheet() {
     const { items, count, isLoading, removeItem, updateQuantity } = useCart();
     const [isOpen, setIsOpen] = useState(false);
+    const { formatPrice } = useCurrency();
 
     const subtotal = items.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
 
-    // Format price helper if not imported
-    const format = (price: number) => `$${(price / 100).toFixed(2)}`;
+    // Format price helper using currency context
+    const format = (priceCents: number) => formatPrice(priceCents);
 
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>

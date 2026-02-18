@@ -9,11 +9,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import React from "react";
+import { useCurrency } from "@/lib/currency-context";
 
 export function ProductPageClient({ slug }: { slug: string }) {
     const searchParams = useSearchParams();
     const highlightedReviewId = searchParams.get("review");
-    console.log("ProductPageClient: highlightedReviewId:", highlightedReviewId);
+    const { formatPrice: formatCurrencyPrice } = useCurrency();
 
     // Fetch product data
     const productData = useQuery(api.products.getBySlug, { slug });
@@ -78,11 +79,11 @@ export function ProductPageClient({ slug }: { slug: string }) {
                 shippingSublabel = "For this item";
             } else {
                 shippingLabel = "Shipping";
-                shippingSublabel = `$${(productData.shippingRateOverride / 100).toFixed(2)}`;
+                shippingSublabel = formatCurrencyPrice(productData.shippingRateOverride);
             }
         } else if (globalSettings?.freeShippingThreshold) {
             shippingLabel = "Free Shipping";
-            shippingSublabel = `On orders over $${(globalSettings.freeShippingThreshold / 100).toFixed(0)}`;
+            shippingSublabel = `On orders over ${formatCurrencyPrice(globalSettings.freeShippingThreshold)}`;
         }
     }
 

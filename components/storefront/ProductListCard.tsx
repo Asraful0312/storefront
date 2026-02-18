@@ -12,6 +12,7 @@ import { api } from "@/convex/_generated/api";
 import { useCart } from "@/hooks/useCart";
 import { Id } from "@/convex/_generated/dataModel";
 import { ProductCard } from "./ProductCard";
+import { useCurrency } from "@/lib/currency-context";
 
 export interface Product {
     id: string;
@@ -70,6 +71,7 @@ export function ProductListCard({
     className,
 }: ProductListCardProps) {
     const { addItem } = useCart();
+    const { formatDollarPrice } = useCurrency();
 
     // Check if in wishlist (returns boolean or undefined if loading/not logged in)
     const isInWishlist = useQuery(api.wishlist.isInWishlist, { productId: product.id as any });
@@ -144,11 +146,11 @@ export function ProductListCard({
                     <div className="flex items-center justify-between mt-4">
                         <div className="flex items-center gap-2">
                             <span className={cn("font-bold", hasDiscount ? "text-primary" : "text-foreground")}>
-                                ${product.price.toFixed(2)}
+                                {formatDollarPrice(product.price)}
                             </span>
                             {hasDiscount && (
                                 <span className="text-muted-foreground text-sm line-through">
-                                    ${product.originalPrice!.toFixed(2)}
+                                    {formatDollarPrice(product.originalPrice!)}
                                 </span>
                             )}
                         </div>

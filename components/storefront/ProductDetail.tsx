@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { ReviewSection } from "./ReviewSection";
 import { Id } from "@/convex/_generated/dataModel";
+import { useCurrency } from "@/lib/currency-context";
 
 // Types
 interface ProductColor {
@@ -319,6 +320,8 @@ export function ProductInfo({
         ? Math.round((1 - currentPrice / product.originalPrice!) * 100)
         : 0;
 
+    const { formatDollarPrice } = useCurrency();
+
     return (
         <div className="flex flex-col gap-6">
             {/* Rating & Title */}
@@ -338,10 +341,10 @@ export function ProductInfo({
             <div className="flex flex-col gap-1">
                 <div className="flex items-end gap-3">
                     <div className="flex flex-col">
-                        <span className="text-3xl font-bold text-primary">${totalPrice.toFixed(2)}</span>
+                        <span className="text-3xl font-bold text-primary">{formatDollarPrice(totalPrice)}</span>
                         {quantity > 1 && (
                             <span className="text-sm text-muted-foreground">
-                                ${currentPrice.toFixed(2)} each
+                                {formatDollarPrice(currentPrice)} each
                             </span>
                         )}
                     </div>
@@ -349,7 +352,7 @@ export function ProductInfo({
                     {hasDiscount && (
                         <>
                             <span className="text-lg text-muted-foreground line-through mb-1">
-                                ${product.originalPrice!.toFixed(2)}
+                                {formatDollarPrice(product.originalPrice!)}
                             </span>
                             <Badge className="bg-primary/10 text-primary hover:bg-primary/10 ml-auto mb-1.5">
                                 SAVE {discountPercent}%

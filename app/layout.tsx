@@ -5,6 +5,7 @@ import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ActivePresence } from "@/components/ActivePresence";
 import { NuqsAdapter } from "@fobos531/nuqs/adapters/next/app";
+import { CurrencyProvider } from "@/lib/currency-context";
 
 const workSans = Work_Sans({
   variable: "--font-work-sans",
@@ -30,10 +31,12 @@ export default function RootLayout({
       <body className={`${workSans.variable} font-sans antialiased min-h-screen flex flex-col`}>
         <ClerkProvider dynamic>
           <ConvexClientProvider>
-            <NuqsAdapter>
-              <ActivePresence />
-              {children}
-            </NuqsAdapter>
+            <CurrencyProvider>
+              <NuqsAdapter>
+                <ActivePresence />
+                {children}
+              </NuqsAdapter>
+            </CurrencyProvider>
           </ConvexClientProvider>
         </ClerkProvider>
       </body>

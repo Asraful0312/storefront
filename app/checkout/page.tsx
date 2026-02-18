@@ -194,6 +194,14 @@ export default function CheckoutPage() {
     };
 
     const handlePlaceOrder = async () => {
+        // Validate address for physical product orders
+        if (!isAllDigital) {
+            if (!address.address || !address.city || !address.zipCode || !address.country || !address.firstName) {
+                alert("Please complete your shipping address first.");
+                setOpenStep("address");
+                return;
+            }
+        }
         setIsProcessing(true);
         try {
             const url = await createCheckoutSession({
@@ -302,8 +310,16 @@ export default function CheckoutPage() {
                             {/* Step 2: Payment */}
                             <div className={`rounded-xl border bg-card transition-all duration-300 ${openStep === "payment" ? "ring-2 ring-primary ring-offset-2 shadow-lg" : "hover:border-primary/50"}`}>
                                 <div
-                                    className="flex items-center justify-between p-6 cursor-pointer"
-                                    onClick={() => setOpenStep("payment")}
+                                    className={`flex items-center justify-between p-6 ${
+                                        completedSteps.includes("address") || isAllDigital
+                                            ? "cursor-pointer"
+                                            : "cursor-not-allowed opacity-60"
+                                    }`}
+                                    onClick={() => {
+                                        if (completedSteps.includes("address") || isAllDigital) {
+                                            setOpenStep("payment");
+                                        }
+                                    }}
                                 >
                                     <div className="flex items-center gap-4">
                                         <div className={`flex items-center justify-center size-8 rounded-full text-sm font-bold transition-colors ${openStep === "payment" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"

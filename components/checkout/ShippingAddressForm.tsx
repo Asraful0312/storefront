@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,15 +47,24 @@ export function ShippingAddressForm({
     };
 
     const [states, setStates] = useState<{ code: string; name: string }[]>([]);
+    const isInitialMount = useRef(true);
 
     // Update states when country changes
     useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            // On initial mount, just load states without clearing the pre-filled state
+            if (address.country) {
+                setStates(getStatesOfCountry(address.country));
+            }
+            return;
+        }
+
         if (address.country) {
             const countryStates = getStatesOfCountry(address.country);
             setStates(countryStates);
 
             // Clear state selection if current state is not valid for new country
-            // optional: check if address.state is in new states list
             const isValidState = countryStates.some(s => s.code === address.state || s.name === address.state);
             if (!isValidState && countryStates.length > 0) {
                 updateField("state", "");
@@ -205,7 +214,16 @@ export function ShippingAddressForm({
                             </div>
                         </div>
                         <div className="mt-6 flex justify-end">
-                            <Button onClick={onContinue} className="px-8">
+                            <Button
+                                onClick={() => {
+                                    if (!address.firstName || !address.address || !address.city || !address.zipCode || !address.country) {
+                                        return;
+                                    }
+                                    onContinue();
+                                }}
+                                disabled={!address.firstName || !address.address || !address.city || !address.zipCode || !address.country}
+                                className="px-8"
+                            >
                                 Continue to Shipping
                             </Button>
                         </div>

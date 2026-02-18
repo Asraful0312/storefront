@@ -6,6 +6,7 @@ import { Heart, ChevronLeft, ChevronRight, Star, StarHalf } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/lib/currency-context";
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -35,6 +36,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product, className }: ProductCardProps) {
     const { addItem } = useCart();
+    const { formatDollarPrice } = useCurrency();
 
     // Check if in wishlist (returns boolean or undefined if loading/not logged in)
     const isInWishlist = useQuery(api.wishlist.isInWishlist, { productId: product.id as any });
@@ -161,11 +163,11 @@ export function ProductCard({ product, className }: ProductCardProps) {
                             hasDiscount ? "text-primary" : "text-foreground"
                         )}
                     >
-                        ${product.price.toFixed(2)}
+                        {formatDollarPrice(product.price)}
                     </span>
                     {hasDiscount && (
                         <span className="text-sm text-muted-foreground line-through">
-                            ${product.originalPrice!.toFixed(2)}
+                            {formatDollarPrice(product.originalPrice!)}
                         </span>
                     )}
                 </div>

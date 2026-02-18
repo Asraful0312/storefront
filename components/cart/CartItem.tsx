@@ -4,6 +4,7 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { CartItemData } from "./types";
+import { useCurrency } from "@/lib/currency-context";
 
 interface CartItemProps {
     item: CartItemData;
@@ -12,6 +13,7 @@ interface CartItemProps {
 }
 
 export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
+    const { formatDollarPrice } = useCurrency();
     const handleDecrease = () => {
         if (item.quantity > 1) {
             onQuantityChange(item.id, item.quantity - 1);
@@ -92,11 +94,11 @@ export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
                 <span className="md:hidden text-muted-foreground">Price:</span>
                 <div className="flex flex-col md:items-end">
                     <span className="font-bold text-lg text-foreground">
-                        ${lineTotal.toFixed(2)}
+                        {formatDollarPrice(lineTotal)}
                     </span>
                     {item.quantity > 1 && (
                         <span className="text-xs text-muted-foreground">
-                            ${item.price.toFixed(2)} each
+                            {formatDollarPrice(item.price)} each
                         </span>
                     )}
                 </div>
