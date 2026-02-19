@@ -471,6 +471,55 @@ export default defineSchema({
     updatedAt: v.number(), // timestamp ms
   }).index("by_base", ["base"]),
 
+  // Payment Settings - Admin payment method configuration
+  paymentSettings: defineTable({
+    stripeEnabled: v.boolean(),
+    codEnabled: v.boolean(),
+    codInstructions: v.optional(v.string()),
+    bankTransferEnabled: v.boolean(),
+    bankName: v.optional(v.string()),
+    accountHolder: v.optional(v.string()),
+    accountNumber: v.optional(v.string()),
+    routingNumber: v.optional(v.string()),
+    swiftCode: v.optional(v.string()),
+    bankInstructions: v.optional(v.string()),
+  }),
+
+  // Returns
+  returnRequests: defineTable({
+    orderId: v.id("orders"),
+    userId: v.id("users"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("refunded"),
+      v.literal("completed")
+    ),
+    reason: v.string(),
+    items: v.array(v.object({
+      itemId: v.string(), // ID from order items (productId)
+      quantity: v.number(),
+      reason: v.string(),
+      condition: v.optional(v.string()),
+    })),
+    refundMethod: v.union(
+      v.literal("original_payment"),
+      v.literal("store_credit"),
+      v.literal("exchange")
+    ),
+    adminNotes: v.optional(v.string()),
+    rejectionReason: v.optional(v.string()),
+    refundAmount: v.optional(v.number()),
+    images: v.optional(v.array(v.string())),
+    submissionDate: v.number(),
+    lastUpdated: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_orderId", ["orderId"])
+    // Compound index to find pending returns quickly for admin dashboard
+    .index("by_status", ["status"]),
+
   // Shopping Cart
   cartItems: defineTable({
     userId: v.id("users"),

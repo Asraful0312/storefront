@@ -11,13 +11,17 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { usePaginatedQuery } from "convex/react";
+import { useRouter } from "next/navigation";
+import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
 
 export default function OrderHistoryPage() {
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [dateRange, setDateRange] = useState<string>("all");
+    const router = useRouter();
+    const syncCart = useMutation(api.cart.sync);
 
     // Pagination
     const { results, status, loadMore } = usePaginatedQuery(
@@ -32,18 +36,39 @@ export default function OrderHistoryPage() {
         { label: "Order History" },
     ];
 
-    const handleReorder = (orderId: string) => {
-        console.log("Reordering:", orderId);
-        // Implement reorder logic here (e.g., add items to cart)
+    const handleReorder = async (orderId: string) => {
+        const order = results.find((o) => o._id === orderId);
+        if (!order) return;
+
+        try {
+            const items = order.items.map((item: any) => ({
+                productId: item.productId,
+                variantId: item.variantId,
+                quantity: item.quantity,
+            }));
+
+            await syncCart({ items });
+            toast.success("Items added to cart");
+            router.push("/cart");
+        } catch (error) {
+            toast.error("Failed to reorder items");
+        }
     };
 
-    // Client-side filtering if backend filtering isn't perfect yet,
-    // although we are passing status to backend, our backend implementation
-    // currently ignores it for pagination reasons (as noted in comments).
-    // So we filter here for display.
+    // Client-side filtering if backend filtering isn't perfect yet
     const filteredOrders = (results || []).filter(order =>
         filterStatus === "all" || order?.status === filterStatus
     );
+
+    if (results === undefined) {
+        return (
+             <>
+                <Header />
+                <div className="min-h-screen flex items-center justify-center">Loading...</div>
+                <Footer />
+            </>
+        );
+    }
 
     return (
         <>
@@ -123,6 +148,8 @@ export default function OrderHistoryPage() {
                                                 name: item.name,
                                                 image: item.image || "",
                                                 productType: item.productType,
+                                                variantId: item.variantId,
+                                                quantity: item.quantity,
                                             }))
                                         }}
                                         onReorder={handleReorder}

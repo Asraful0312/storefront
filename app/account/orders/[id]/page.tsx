@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Copy, Check } from "lucide-react";
+import { ArrowLeft, Copy, Check, Download } from "lucide-react";
 import { Header, Footer, Breadcrumb } from "@/components/storefront";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,86 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
         setCopied(true);
         toast.success("Order ID copied to clipboard");
         setTimeout(() => setCopied(false), 2000);
+    };
+
+    const exportOrderPDF = async () => {
+        if (!order) return;
+        
+        try {
+            const doc = new (await import("jspdf")).default();
+            const autoTable = (await import("jspdf-autotable")).default;
+
+            // Header
+            doc.setFontSize(20);
+            doc.text("Order Receipt", 14, 22);
+            
+            doc.setFontSize(10);
+            doc.text(`Storefront Inc.`, 14, 30);
+            doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 35);
+
+            // Order Info
+            doc.setFontSize(12);
+            doc.text(`Order #${order.orderNumber}`, 14, 45);
+            
+            doc.setFontSize(10);
+            const status = order.status.charAt(0).toUpperCase() + order.status.slice(1);
+            doc.text(`Date Placed: ${formatDate(order._creationTime)}`, 14, 52);
+            doc.text(`Status: ${status}`, 14, 57);
+            doc.text(`Payment Method: ${order.paymentMethod ? order.paymentMethod.toUpperCase() : 'N/A'}`, 14, 62);
+
+            // Shipping Info
+            if (order.shippingAddress) {
+                const addr = order.shippingAddress;
+                doc.text("Shipping To:", 120, 45);
+                doc.text(addr.recipientName, 120, 50);
+                doc.text(addr.street, 120, 55);
+                if (addr.apartment) doc.text(addr.apartment, 120, 60);
+                doc.text(`${addr.city}, ${addr.state} ${addr.zipCode}`, 120, addr.apartment ? 65 : 60);
+                doc.text(addr.country, 120, addr.apartment ? 70 : 65);
+            }
+
+            // Items Table
+            const startY = order.shippingAddress ? 80 : 70;
+            
+            const tableData = order.items.map((item: any) => [
+                item.name,
+                item.quantity,
+                `$${(item.price / 100).toFixed(2)}`,
+                `$${((item.price * item.quantity) / 100).toFixed(2)}`
+            ]);
+
+            autoTable(doc, {
+                head: [["Item", "Qty", "Price", "Total"]],
+                body: tableData,
+                startY: startY,
+                theme: 'striped',
+                headStyles: { fillColor: [41, 41, 41] }
+            });
+
+            // Summary
+            const finalY = (doc as any).lastAutoTable.finalY + 10;
+            
+            const summaryX = 140;
+            doc.text(`Subtotal:`, summaryX, finalY);
+            doc.text(`$${(order.subtotal / 100).toFixed(2)}`, 195, finalY, { align: 'right' });
+            
+            doc.text(`Shipping:`, summaryX, finalY + 5);
+            doc.text(`$${(order.shipping / 100).toFixed(2)}`, 195, finalY + 5, { align: 'right' });
+            
+            doc.text(`Tax:`, summaryX, finalY + 10);
+            doc.text(`$${(order.tax / 100).toFixed(2)}`, 195, finalY + 10, { align: 'right' });
+            
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text(`Total:`, summaryX, finalY + 20);
+            doc.text(`$${(order.total / 100).toFixed(2)}`, 195, finalY + 20, { align: 'right' });
+
+            doc.save(`Order_${order.orderNumber}.pdf`);
+            toast.success("Order receipt downloaded");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to generate PDF");
+        }
     };
 
     if (order === undefined) {
@@ -185,6 +265,10 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
                             Placed on {formatDate(order._creationTime)}
                         </p>
                     </div>
+                    <Button variant="outline" className="gap-2" onClick={exportOrderPDF}>
+                        <Download className="size-4" />
+                        Export Order
+                    </Button>
                 </div>
 
                 {/* Progress Tracker */}
@@ -197,6 +281,11 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
                     {/* Left Column: Items List */}
                     <div className="lg:col-span-2 flex flex-col gap-6">
                         <OrderItemsList
+                            isPendingOfflinePayment={
+                                order.status === "pending" &&
+                                !!order.paymentMethod &&
+                                order.paymentMethod !== "stripe"
+                            }
                             items={order.items.map((item: any) => ({
                                 id: item.productId,
                                 name: item.name,
@@ -206,8 +295,6 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
                                 price: item.price / 100,
                                 productType: item.productType,
                                 hasFile: item.hasFile,
-                                // digitalFileUrl: item.digitalFileUrl, // No longer on item, fetched on demand
-                                // digitalFileName: item.digitalFileName,
                                 giftCardCode: item.giftCardCode,
                                 downloadCount: item.downloadCount,
                                 maxDownloads: item.maxDownloads,

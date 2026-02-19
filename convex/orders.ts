@@ -389,8 +389,38 @@ export const updateOrderStatus = mutation({
         const oldOrder = await ctx.db.get(args.orderId);
         if (!oldOrder) throw new Error("Order not found");
 
+        // Generate gift card codes when confirming offline payment orders
+        // (codes were intentionally deferred until payment is verified)
+        const confirmedStatuses = ["delivered", "processing", "shipped"];
+        const wasPending = oldOrder.status === "pending";
+        const isConfirming = confirmedStatuses.includes(args.status);
+        let updatedItems = oldOrder.items;
+
+        if (wasPending && isConfirming && oldOrder.paymentMethod && oldOrder.paymentMethod !== "stripe") {
+            const generateGiftCode = () => {
+                const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+                const segment = () =>
+                    Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+                return `GIFT-${segment()}-${segment()}-${segment()}`;
+            };
+
+            let itemsChanged = false;
+            updatedItems = oldOrder.items.map((item: any) => {
+                if (item.productType === "gift_card" && !item.giftCardCode) {
+                    itemsChanged = true;
+                    return { ...item, giftCardCode: generateGiftCode() };
+                }
+                return item;
+            });
+
+            if (!itemsChanged) {
+                updatedItems = oldOrder.items;
+            }
+        }
+
         await ctx.db.patch(args.orderId, {
             status: args.status,
+            ...(updatedItems !== oldOrder.items ? { items: updatedItems } : {}),
             ...(args.trackingNumber ? { trackingNumber: args.trackingNumber } : {}),
         });
 
@@ -773,6 +803,15 @@ export const getDownloadUrl = mutation({
 
         if (order.userId !== user._id) throw new Error("Unauthorized access to order");
 
+        // Block downloads for offline payment orders that haven't been confirmed yet
+        if (
+            order.status === "pending" &&
+            order.paymentMethod &&
+            order.paymentMethod !== "stripe"
+        ) {
+            throw new Error("Downloads are available after payment is confirmed. Your order is awaiting payment verification.");
+        }
+
         // Find the item
         const itemIndex = order.items.findIndex(i => i.productId === args.productId);
         if (itemIndex === -1) throw new Error("Item not found in order");
@@ -806,4 +845,30 @@ export const getDownloadUrl = mutation({
             remaining: item.maxDownloads !== undefined ? item.maxDownloads - ((item.downloadCount || 0) + 1) : undefined
         };
     }
+});
+
+export const listReturnableOrders = query({
+    args: {},
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) return [];
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+            .unique();
+
+        if (!user) return [];
+
+        // Fetch user's orders, sorted by newest first
+        const orders = await ctx.db
+            .query("orders")
+            .withIndex("by_userId", (q) => q.eq("userId", user._id))
+            .order("desc")
+            .collect();
+
+        // Filter for delivered orders only
+        // In a real implementation, you'd check if order is within 30 days window
+        return orders.filter(o => o.status === "delivered");
+    },
 });

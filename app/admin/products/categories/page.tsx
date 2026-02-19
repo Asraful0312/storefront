@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import {
     Select,
     SelectContent,
@@ -50,6 +51,23 @@ import {
 import Link from "next/link";
 import { useCloudinaryUpload } from "@imaxis/cloudinary-convex/react";
 import { ImageLibraryPicker } from "@/components/admin/ImageLibraryPicker";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from "@dnd-kit/core";
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface CategoryWithChildren {
     _id: Id<"categories">;
@@ -62,11 +80,185 @@ interface CategoryWithChildren {
     children: CategoryWithChildren[];
 }
 
+interface SortableItemProps {
+    category: CategoryWithChildren;
+    depth: number;
+    onEdit: (cat: CategoryWithChildren) => void;
+    onDelete: (cat: CategoryWithChildren) => void;
+    onAdd: (parent: CategoryWithChildren) => void;
+}
+
+function SortableCategoryItem({ category, depth, onEdit, onDelete, onAdd }: SortableItemProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: category._id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        paddingLeft: `${depth * 24 + 12}px`,
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style}>
+            <div className={cn(
+                "flex items-center gap-3 p-3 hover:bg-secondary/50 rounded-lg group transition-colors",
+                isDragging && "bg-secondary"
+            )}>
+                <div {...attributes} {...listeners} className="cursor-grab hover:text-foreground text-muted-foreground transition-colors">
+                    <GripVertical className="size-4" />
+                </div>
+
+                {category.imageUrl ? (
+                    <div
+                        className="size-10 rounded-lg bg-cover bg-center border border-border shrink-0"
+                        style={{ backgroundImage: `url(${category.imageUrl})` }}
+                    />
+                ) : (
+                    <div className="size-10 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                        <ImageIcon className="size-5 text-muted-foreground" />
+                    </div>
+                )}
+
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                        <span className="font-medium text-foreground">{category.name}</span>
+                        {category.children?.length > 0 && (
+                            <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded">
+                                {category.children.length} sub
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">
+                        /{category.slug}
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        onClick={() => onAdd(category)}
+                        title="Add subcategory"
+                    >
+                        <Plus className="size-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        onClick={() => onEdit(category)}
+                    >
+                        <Pencil className="size-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-destructive hover:text-destructive"
+                        onClick={() => onDelete(category)}
+                    >
+                        <Trash2 className="size-4" />
+                    </Button>
+                </div>
+            </div>
+
+            {/* Render children via SortableContext if any */}
+            {category.children?.length > 0 && (
+                <div className="border-l border-border ml-6">
+                    <SortableContext
+                        items={category.children.map((c) => c._id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        {category.children.map((child) => (
+                            <SortableCategoryItem
+                                key={child._id}
+                                category={child}
+                                depth={depth + 1}
+                                onEdit={onEdit}
+                                onDelete={onDelete}
+                                onAdd={onAdd}
+                            />
+                        ))}
+                    </SortableContext>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function CategoriesPage() {
     const categories = useQuery(api.categories.list) as CategoryWithChildren[] | undefined;
     const createCategory = useMutation(api.categories.create);
     const updateCategory = useMutation(api.categories.update);
     const deleteCategory = useMutation(api.categories.remove);
+    const reorderCategories = useMutation(api.categories.reorder);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), // Require 8px movement
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id || !categories) return;
+
+        // Helper to find parent array and item index
+        const findContainer = (id: string, items: CategoryWithChildren[]): { container: CategoryWithChildren[], index: number } | null => {
+            // Check root level
+            const rootIndex = items.findIndex(item => item._id === id);
+            if (rootIndex !== -1) return { container: items, index: rootIndex };
+
+            // Check children recursively
+            for (const item of items) {
+                if (item.children) {
+                    const result = findContainer(id, item.children);
+                    if (result) return result;
+                }
+            }
+            return null;
+        };
+
+        const activeInfo = findContainer(active.id as string, categories);
+        const overInfo = findContainer(over.id as string, categories);
+
+        if (!activeInfo || !overInfo) return;
+
+        // Only allow reordering within the same container (same parent)
+        if (activeInfo.container !== overInfo.container) {
+            return; // Optionally handle reparenting here later
+        }
+
+        const oldIndex = activeInfo.index;
+        const newIndex = overInfo.index;
+
+        if (oldIndex !== newIndex) {
+            // Optimistic Update (UI) - handled by DndKit while dragging, 
+            // but we need to update backend to persist
+            const newOrder = arrayMove(activeInfo.container, oldIndex, newIndex);
+            
+            // Map to backend update format
+            const updates = newOrder.map((cat, index) => ({
+                id: cat._id,
+                sortOrder: index,
+            }));
+
+            try {
+                await reorderCategories({ updates });
+                // Note: Convex will automatically update the UI when query data changes
+            } catch (err) {
+                console.error("Failed to reorder:", err);
+            }
+        }
+    };
 
     // Dialog states
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -356,9 +548,29 @@ export default function CategoriesPage() {
                                 </Button>
                             </div>
                         ) : (
-                            <div className="divide-y divide-border">
-                                {categories.map((cat) => renderCategory(cat))}
-                            </div>
+                            <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={handleDragEnd}
+                            >
+                                <div className="divide-y divide-border">
+                                    <SortableContext
+                                        items={categories.map((c) => c._id)}
+                                        strategy={verticalListSortingStrategy}
+                                    >
+                                        {categories.map((cat) => (
+                                            <SortableCategoryItem
+                                                key={cat._id}
+                                                category={cat}
+                                                depth={0}
+                                                onEdit={openEditDialog}
+                                                onDelete={confirmDelete}
+                                                onAdd={openCreateDialog}
+                                            />
+                                        ))}
+                                    </SortableContext>
+                                </div>
+                            </DndContext>
                         )}
                     </div>
                 </div>

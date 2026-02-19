@@ -20,12 +20,16 @@ import { AnimatedIconHandle } from "../ui/types";
 import ArrowDownAZIcon from "../ui/arrow-down-a-z-icon";
 import WorldIcon from "../ui/world-icon";
 import PenIcon from "../ui/pen-icon";
+import RefreshIcon from "../ui/refresh-icon";
+import StackIcon from "../ui/stack-icon";
 
 const navItems = [
     { id: "site", label: "Site", icon: WorldIcon, href: "/" },
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboardIcon, href: "/admin" },
     { id: "products", label: "Products", icon: PackageIcon, href: "/admin/products" },
+    { id: "categories", label: "Categories", icon: StackIcon, href: "/admin/products/categories" },
     { id: "orders", label: "Orders", icon: ShoppingCartIcon, href: "/admin/orders" },
+    { id: "returns", label: "Returns", icon: RefreshIcon, href: "/admin/returns" },
     { id: "customers", label: "Customers", icon: UsersIcon, href: "/admin/customers" },
     { id: "reviews", label: "Reviews", icon: PenIcon, href: "/admin/reviews" },
     { id: "analytics", label: "Analytics", icon: ChartHistogramIcon, href: "/admin/analytics" },
@@ -73,7 +77,14 @@ export function AdminSidebar({ adminName = "Store Admin", adminAvatar }: AdminSi
                     {navItems.map((item) => {
                         const isActive =
                             pathname === item.href ||
-                            (item.href !== "/admin" && pathname?.startsWith(item.href));
+                            (item.href !== "/admin" &&
+                                pathname?.startsWith(item.href) &&
+                                !navItems.some(
+                                    (other) =>
+                                        other.href !== item.href &&
+                                        other.href.startsWith(item.href) &&
+                                        pathname?.startsWith(other.href)
+                                ));
                         const Icon = item.icon;
 
                         return (
@@ -138,7 +149,7 @@ const SidebarItem = ({
             onMouseLeave={handleMouseLeave}
             className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
-               item.href !== '/' && isActive
+               item.href !== '/' &&   isActive
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
             )}

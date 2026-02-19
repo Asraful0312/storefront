@@ -25,9 +25,10 @@ interface OrderDetailItem {
 interface OrderItemsListProps {
     items: OrderDetailItem[];
     onDownload?: (itemIndex: number) => Promise<{ allowed: boolean; fileUrl?: string; remainingDownloads?: number }>;
+    isPendingOfflinePayment?: boolean;
 }
 
-export function OrderItemsList({ items, onDownload }: OrderItemsListProps) {
+export function OrderItemsList({ items, onDownload, isPendingOfflinePayment }: OrderItemsListProps) {
     const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
 
     const handleDownload = async (idx: number, item: OrderDetailItem) => {
@@ -92,31 +93,41 @@ export function OrderItemsList({ items, onDownload }: OrderItemsListProps) {
 
                         {/* Digital download section */}
                         {item.productType === "digital" && item.hasFile && (
-                            <div className="ml-0 sm:ml-24 flex items-center gap-3 bg-blue-50 dark:bg-blue-950/30 px-4 py-3 rounded-lg">
-                                <FileDown className="size-4 text-blue-600 shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground truncate">{item.digitalFileName || "Download file"}</p>
-                                    {item.maxDownloads && (
-                                        <p className="text-xs text-muted-foreground">
-                                            {(item.downloadCount || 0)} / {item.maxDownloads} downloads used
-                                        </p>
-                                    )}
+                            isPendingOfflinePayment ? (
+                                <div className="ml-0 sm:ml-24 flex items-center gap-3 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 rounded-lg">
+                                    <FileDown className="size-4 text-amber-600 shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Download available after payment confirmation</p>
+                                        <p className="text-xs text-amber-600 dark:text-amber-400">Your order is awaiting payment verification.</p>
+                                    </div>
                                 </div>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="gap-1.5 shrink-0"
-                                    disabled={downloadingIndex === idx || (item.maxDownloads !== undefined && (item.downloadCount || 0) >= item.maxDownloads)}
-                                    onClick={() => handleDownload(idx, item)}
-                                >
-                                    {downloadingIndex === idx ? (
-                                        <Loader2 className="size-3.5 animate-spin" />
-                                    ) : (
-                                        <Download className="size-3.5" />
-                                    )}
-                                    Download
-                                </Button>
-                            </div>
+                            ) : (
+                                <div className="ml-0 sm:ml-24 flex items-center gap-3 bg-blue-50 dark:bg-blue-950/30 px-4 py-3 rounded-lg">
+                                    <FileDown className="size-4 text-blue-600 shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-foreground truncate">{item.digitalFileName || "Download file"}</p>
+                                        {item.maxDownloads && (
+                                            <p className="text-xs text-muted-foreground">
+                                                {(item.downloadCount || 0)} / {item.maxDownloads} downloads used
+                                            </p>
+                                        )}
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="gap-1.5 shrink-0"
+                                        disabled={downloadingIndex === idx || (item.maxDownloads !== undefined && (item.downloadCount || 0) >= item.maxDownloads)}
+                                        onClick={() => handleDownload(idx, item)}
+                                    >
+                                        {downloadingIndex === idx ? (
+                                            <Loader2 className="size-3.5 animate-spin" />
+                                        ) : (
+                                            <Download className="size-3.5" />
+                                        )}
+                                        Download
+                                    </Button>
+                                </div>
+                            )
                         )}
 
                         {/* Gift card code display */}
@@ -134,7 +145,11 @@ export function OrderItemsList({ items, onDownload }: OrderItemsListProps) {
                         {item.productType === "gift_card" && !item.giftCardCode && (
                             <div className="ml-0 sm:ml-24 flex items-center gap-3 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 rounded-lg">
                                 <Gift className="size-4 text-amber-600 shrink-0" />
-                                <p className="text-sm text-amber-700 dark:text-amber-400">Gift card code will be delivered shortly</p>
+                                <p className="text-sm text-amber-700 dark:text-amber-400">
+                                    {isPendingOfflinePayment
+                                        ? "Gift card code will be generated after payment is confirmed."
+                                        : "Gift card code will be delivered shortly"}
+                                </p>
                             </div>
                         )}
                     </div>

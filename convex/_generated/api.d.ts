@@ -16,16 +16,19 @@ import type * as cloudinary from "../cloudinary.js";
 import type * as cloudinaryImages from "../cloudinaryImages.js";
 import type * as coupons from "../coupons.js";
 import type * as crons from "../crons.js";
+import type * as dashboard from "../dashboard.js";
 import type * as debug_orders from "../debug_orders.js";
 import type * as digitalFiles from "../digitalFiles.js";
 import type * as exchangeRates from "../exchangeRates.js";
 import type * as heroSlides from "../heroSlides.js";
 import type * as http from "../http.js";
 import type * as orders from "../orders.js";
+import type * as paymentSettings from "../paymentSettings.js";
 import type * as payments from "../payments.js";
 import type * as presence from "../presence.js";
 import type * as productVariants from "../productVariants.js";
 import type * as products from "../products.js";
+import type * as returns from "../returns.js";
 import type * as reviews from "../reviews.js";
 import type * as shippingSettings from "../shippingSettings.js";
 import type * as siteSettings from "../siteSettings.js";
@@ -50,16 +53,19 @@ declare const fullApi: ApiFromModules<{
   cloudinaryImages: typeof cloudinaryImages;
   coupons: typeof coupons;
   crons: typeof crons;
+  dashboard: typeof dashboard;
   debug_orders: typeof debug_orders;
   digitalFiles: typeof digitalFiles;
   exchangeRates: typeof exchangeRates;
   heroSlides: typeof heroSlides;
   http: typeof http;
   orders: typeof orders;
+  paymentSettings: typeof paymentSettings;
   payments: typeof payments;
   presence: typeof presence;
   productVariants: typeof productVariants;
   products: typeof products;
+  returns: typeof returns;
   reviews: typeof reviews;
   shippingSettings: typeof shippingSettings;
   siteSettings: typeof siteSettings;
@@ -1017,6 +1023,155 @@ export declare const components: {
         "action",
         "internal",
         { apiKey: string; quantity: number; stripeSubscriptionId: string },
+        null
+      >;
+    };
+  };
+  resend: {
+    lib: {
+      cancelEmail: FunctionReference<
+        "mutation",
+        "internal",
+        { emailId: string },
+        null
+      >;
+      cleanupAbandonedEmails: FunctionReference<
+        "mutation",
+        "internal",
+        { olderThan?: number },
+        null
+      >;
+      cleanupOldEmails: FunctionReference<
+        "mutation",
+        "internal",
+        { olderThan?: number },
+        null
+      >;
+      createManualEmail: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          from: string;
+          headers?: Array<{ name: string; value: string }>;
+          replyTo?: Array<string>;
+          subject: string;
+          to: Array<string> | string;
+        },
+        string
+      >;
+      get: FunctionReference<
+        "query",
+        "internal",
+        { emailId: string },
+        {
+          bcc?: Array<string>;
+          bounced?: boolean;
+          cc?: Array<string>;
+          clicked?: boolean;
+          complained: boolean;
+          createdAt: number;
+          deliveryDelayed?: boolean;
+          errorMessage?: string;
+          failed?: boolean;
+          finalizedAt: number;
+          from: string;
+          headers?: Array<{ name: string; value: string }>;
+          html?: string;
+          opened: boolean;
+          replyTo: Array<string>;
+          resendId?: string;
+          segment: number;
+          status:
+            | "waiting"
+            | "queued"
+            | "cancelled"
+            | "sent"
+            | "delivered"
+            | "delivery_delayed"
+            | "bounced"
+            | "failed";
+          subject?: string;
+          template?: {
+            id: string;
+            variables?: Record<string, string | number>;
+          };
+          text?: string;
+          to: Array<string>;
+        } | null
+      >;
+      getStatus: FunctionReference<
+        "query",
+        "internal",
+        { emailId: string },
+        {
+          bounced: boolean;
+          clicked: boolean;
+          complained: boolean;
+          deliveryDelayed: boolean;
+          errorMessage: string | null;
+          failed: boolean;
+          opened: boolean;
+          status:
+            | "waiting"
+            | "queued"
+            | "cancelled"
+            | "sent"
+            | "delivered"
+            | "delivery_delayed"
+            | "bounced"
+            | "failed";
+        } | null
+      >;
+      handleEmailEvent: FunctionReference<
+        "mutation",
+        "internal",
+        { event: any },
+        null
+      >;
+      sendEmail: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          bcc?: Array<string>;
+          cc?: Array<string>;
+          from: string;
+          headers?: Array<{ name: string; value: string }>;
+          html?: string;
+          options: {
+            apiKey: string;
+            initialBackoffMs: number;
+            onEmailEvent?: { fnHandle: string };
+            retryAttempts: number;
+            testMode: boolean;
+          };
+          replyTo?: Array<string>;
+          subject?: string;
+          template?: {
+            id: string;
+            variables?: Record<string, string | number>;
+          };
+          text?: string;
+          to: Array<string>;
+        },
+        string
+      >;
+      updateManualEmail: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          emailId: string;
+          errorMessage?: string;
+          resendId?: string;
+          status:
+            | "waiting"
+            | "queued"
+            | "cancelled"
+            | "sent"
+            | "delivered"
+            | "delivery_delayed"
+            | "bounced"
+            | "failed";
+        },
         null
       >;
     };

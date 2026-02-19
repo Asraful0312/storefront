@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
     AdminHeader,
     StatCard,
@@ -9,40 +10,80 @@ import {
     type LowStockItem,
 } from "@/components/admin";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Loader2 } from "lucide-react";
+import {
+    ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
+    type ChartConfig,
+} from "@/components/ui/chart";
+import {
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    BarChart,
+    Bar,
+} from "recharts";
 
-// Sample data
-const recentOrders: RecentOrder[] = [
-    { id: "1", orderId: "1023", customer: "Jane Doe", status: "shipped", total: 120.0 },
-    { id: "2", orderId: "1024", customer: "John Smith", status: "pending", total: 45.0 },
-    { id: "3", orderId: "1025", customer: "Robert Fox", status: "processing", total: 89.99 },
-    { id: "4", orderId: "1026", customer: "Cody Fisher", status: "cancelled", total: 12.5 },
-];
+// Chart configs
+const salesChartConfig = {
+    revenue: {
+        label: "Revenue",
+        color: "hsl(var(--primary))",
+    },
+} satisfies ChartConfig;
 
-const lowStockItems: LowStockItem[] = [
-    {
-        id: "1",
-        name: "Vintage Leather Bag",
-        productId: "49201",
-        stockLeft: 3,
-        image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBBf1mIfXT2ms7pgkpZKefymn65dyYFVE9SzLnUx4-QplmlRHLhsqrStRvtdxcwCYX7ckR5HyVDtriy7PLSFACf3yim6X0dOfyLPH12DyJ2ZTZdjWI4MMtaWnh-bXu7o8_OGl91tKC2QYza6f7kGfiv8K2Gl6RJGPe0OESSgkdhOBfAQ8yidrzCEAYBxheahkPdORoWaaQwRugi4wMP0xYDyD4-AxYvtILWO2sdT7fhtBO8fDFlznBBobEhEWF_bVehbStvm9njky0",
+const statusChartConfig = {
+    count: {
+        label: "Orders",
+        color: "hsl(var(--primary))",
     },
-    {
-        id: "2",
-        name: "Summer Canvas Hat",
-        productId: "22019",
-        stockLeft: 5,
-        image: "https://lh3.googleusercontent.com/aida-public/AB6AXuChJa7dn1jujpf8zUtkkhPhnmDeMGOaKwXro6ErEoeHn-xlWbIMA9BOmLmjCq9DlmzVqtUIOFOWGTVCyRNNcue20vTdS-K0rexKjzSi1vf36-S4yA2yXdB2AQTFUPNvU4gP88Y9vSqc5TNCRN4Pz4Gtcjgw2nyVgK5mPHd3YcdyrgGMTxrJJQaS6bAREA9kNAqSvG-afSRjgJ4wTpTiyoI8NurLCcgzz-N5-yuruD2JX6r7nMY89JAUdzHD2MGLbYMOmkmrgCzu7MA",
-    },
-    {
-        id: "3",
-        name: "Ceramic Coffee Mug",
-        productId: "88102",
-        stockLeft: 8,
-        image: "https://lh3.googleusercontent.com/aida-public/AB6AXuA2-P_KZ7u2VMZ_RG7AIdnacVIdCkBNfO1_SYlNsBHO3KDoNzPN14HtSAcMtjNT_nIV53ZIWM5WufxBUIn_ErhspmvOFxNnls5FnPZxbUMrkGwzLlMliRR2EJjt9v6vwkrq6oiAj9R2xFs99IPgrz3jzmQ3AGABtnbxV0-_InytHX5_F1MvpqNazKopr4dCh9DgNwcHAqG1XrvEwJtoyIfXuONyhO5t3xDHnLAMBKq-MdxAiRunuHS4ubzQnUReXpbs12EsGf7hCSs",
-    },
-];
+    pending: { label: "Pending", color: "hsl(35, 90%, 55%)" },
+    processing: { label: "Processing", color: "hsl(210, 80%, 55%)" },
+    shipped: { label: "Shipped", color: "hsl(260, 70%, 60%)" },
+    delivered: { label: "Delivered", color: "hsl(145, 65%, 42%)" },
+    cancelled: { label: "Cancelled", color: "hsl(0, 0%, 55%)" },
+    returned: { label: "Returned", color: "hsl(0, 70%, 55%)" },
+} satisfies ChartConfig;
+
+const STATUS_COLORS: Record<string, string> = {
+    pending: "hsl(35, 90%, 55%)",
+    processing: "hsl(210, 80%, 55%)",
+    shipped: "hsl(260, 70%, 60%)",
+    delivered: "hsl(145, 65%, 42%)",
+    cancelled: "hsl(0, 0%, 55%)",
+    returned: "hsl(0, 70%, 55%)",
+};
+
+type ChartPeriod = 30 | 90 | 365;
 
 export default function AdminDashboardPage() {
+    const [chartPeriod, setChartPeriod] = useState<ChartPeriod>(30);
+
+    // Backend queries
+    const stats = useQuery(api.dashboard.getDashboardStats);
+    const recentOrders = useQuery(api.dashboard.getRecentOrders);
+    const lowStockProducts = useQuery(api.dashboard.getLowStockProducts);
+    const salesData = useQuery(api.dashboard.getSalesChartData, { days: chartPeriod });
+    const statusDistribution = useQuery(api.dashboard.getOrderStatusDistribution);
+
+    const periodLabel: Record<ChartPeriod, string> = {
+        30: "30 Days",
+        90: "90 Days",
+        365: "12 Months",
+    };
+
+    // Format currency
+    const formatCurrency = (val: number) =>
+        new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(val);
+
+    const formatCompactCurrency = (val: number) =>
+        new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(val);
+
     return (
         <>
             <AdminHeader />
@@ -50,112 +91,194 @@ export default function AdminDashboardPage() {
             <div className="px-6 pb-8 flex flex-col gap-6 max-w-[1400px] mx-auto w-full">
                 {/* KPI Stats Section */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <StatCard title="Total Revenue" value="$24,500" changePercent={12} isPositive />
-                    <StatCard title="Total Orders" value="156" changePercent={8} isPositive />
-                    <StatCard title="Active Users" value="1,200" changePercent={5} isPositive />
+                    {stats ? (
+                        <>
+                            <StatCard
+                                title="Total Revenue"
+                                value={formatCurrency(stats.totalRevenue)}
+                                changePercent={Math.abs(stats.revenueChange)}
+                                isPositive={stats.revenueChange >= 0}
+                            />
+                            <StatCard
+                                title="Total Orders"
+                                value={stats.totalOrders.toLocaleString()}
+                                changePercent={Math.abs(stats.ordersChange)}
+                                isPositive={stats.ordersChange >= 0}
+                            />
+                            <StatCard
+                                title="Active Users"
+                                value={stats.totalUsers.toLocaleString()}
+                                changePercent={Math.abs(stats.usersChange)}
+                                isPositive={stats.usersChange >= 0}
+                            />
+                        </>
+                    ) : (
+                        <>
+                            {[1, 2, 3].map((i) => (
+                                <div
+                                    key={i}
+                                    className="flex items-center justify-center h-[140px] rounded-xl bg-card border border-border shadow-sm"
+                                >
+                                    <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                                </div>
+                            ))}
+                        </>
+                    )}
                 </div>
 
-                {/* Main Chart Section */}
+                {/* Sales Trends Chart */}
                 <div className="w-full rounded-xl bg-card border border-border shadow-sm p-6">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <div>
                             <h2 className="text-foreground text-lg font-bold leading-tight">Sales Trends</h2>
                             <p className="text-muted-foreground text-sm mt-1">
-                                Revenue performance over the last 30 days
+                                Revenue performance over the last {periodLabel[chartPeriod].toLowerCase()}
                             </p>
                         </div>
                         <div className="flex gap-2">
-                            <Button size="sm" variant="secondary" className="text-primary">
-                                30 Days
-                            </Button>
-                            <Button size="sm" variant="ghost">
-                                90 Days
-                            </Button>
-                            <Button size="sm" variant="ghost">
-                                12 Months
-                            </Button>
+                            {([30, 90, 365] as ChartPeriod[]).map((period) => (
+                                <Button
+                                    key={period}
+                                    size="sm"
+                                    variant={chartPeriod === period ? "secondary" : "ghost"}
+                                    className={chartPeriod === period ? "text-primary" : ""}
+                                    onClick={() => setChartPeriod(period)}
+                                >
+                                    {periodLabel[period]}
+                                </Button>
+                            ))}
                         </div>
                     </div>
 
-                    {/* Chart Placeholder */}
-                    <div className="w-full h-[240px] md:h-[300px]">
-                        <svg
-                            className="overflow-visible"
-                            fill="none"
-                            height="100%"
-                            preserveAspectRatio="none"
-                            viewBox="0 0 478 150"
-                            width="100%"
-                        >
-                            {/* Grid lines */}
-                            <line
-                                stroke="hsl(var(--border))"
-                                strokeWidth="1"
-                                x1="0"
-                                x2="478"
-                                y1="149"
-                                y2="149"
-                            />
-                            <line
-                                stroke="hsl(var(--border))"
-                                strokeDasharray="4 4"
-                                strokeWidth="1"
-                                x1="0"
-                                x2="478"
-                                y1="109"
-                                y2="109"
-                            />
-                            <line
-                                stroke="hsl(var(--border))"
-                                strokeDasharray="4 4"
-                                strokeWidth="1"
-                                x1="0"
-                                x2="478"
-                                y1="69"
-                                y2="69"
-                            />
-                            <line
-                                stroke="hsl(var(--border))"
-                                strokeDasharray="4 4"
-                                strokeWidth="1"
-                                x1="0"
-                                x2="478"
-                                y1="29"
-                                y2="29"
-                            />
-                            {/* Gradient Fill */}
-                            <defs>
-                                <linearGradient id="chartGradient" x1="239" x2="239" y1="0" y2="150" gradientUnits="userSpaceOnUse">
-                                    <stop stopColor="hsl(var(--primary))" stopOpacity="0.2" />
-                                    <stop offset="1" stopColor="hsl(var(--primary))" stopOpacity="0" />
-                                </linearGradient>
-                            </defs>
-                            <path
-                                d="M0 109C18.15 109 18.15 21 36.3 21C54.46 21 54.46 41 72.61 41C90.76 41 90.76 93 108.92 93C127.07 93 127.07 33 145.23 33C163.38 33 163.38 101 181.53 101C199.69 101 199.69 61 217.84 61C236 61 236 45 254.15 45C272.3 45 272.3 121 290.46 121C308.61 121 308.61 149 326.76 149C344.92 149 344.92 1 363.07 1C381.23 1 381.23 81 399.38 81C417.53 81 417.53 129 435.69 129C453.84 129 453.84 25 472 25V149H0V109Z"
-                                fill="url(#chartGradient)"
-                            />
-                            {/* Stroke */}
-                            <path
-                                d="M0 109C18.15 109 18.15 21 36.3 21C54.46 21 54.46 41 72.61 41C90.76 41 90.76 93 108.92 93C127.07 93 127.07 33 145.23 33C163.38 33 163.38 101 181.53 101C199.69 101 199.69 61 217.84 61C236 61 236 45 254.15 45C272.3 45 272.3 121 290.46 121C308.61 121 308.61 149 326.76 149C344.92 149 344.92 1 363.07 1C381.23 1 381.23 81 399.38 81C417.53 81 417.53 129 435.69 129C453.84 129 453.84 25 472 25"
-                                stroke="hsl(var(--primary))"
-                                strokeLinecap="round"
-                                strokeWidth="3"
-                            />
-                        </svg>
-                    </div>
-                    <div className="flex justify-between mt-4 px-2">
-                        <p className="text-muted-foreground text-xs font-medium">Oct 1</p>
-                        <p className="text-muted-foreground text-xs font-medium">Oct 8</p>
-                        <p className="text-muted-foreground text-xs font-medium">Oct 15</p>
-                        <p className="text-muted-foreground text-xs font-medium">Oct 22</p>
-                        <p className="text-muted-foreground text-xs font-medium">Oct 29</p>
-                    </div>
+                    {salesData ? (
+                        salesData.length > 0 ? (
+                            <ChartContainer
+                                config={salesChartConfig}
+                                className="h-[240px] md:h-[300px] w-full"
+                            >
+                                <AreaChart
+                                    data={salesData}
+                                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                                >
+                                    <defs>
+                                        <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis
+                                        dataKey="date"
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickMargin={8}
+                                        tickFormatter={(value) => {
+                                            const d = new Date(value + "T00:00:00");
+                                            return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                                        }}
+                                        interval={chartPeriod === 30 ? 6 : chartPeriod === 90 ? 14 : 30}
+                                    />
+                                    <YAxis
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickMargin={8}
+                                        tickFormatter={(v) => formatCompactCurrency(v)}
+                                    />
+                                    <ChartTooltip
+                                        content={
+                                            <ChartTooltipContent
+                                                formatter={(value) => formatCurrency(value as number)}
+                                            />
+                                        }
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="revenue"
+                                        stroke="var(--color-revenue)"
+                                        strokeWidth={2}
+                                        fill="url(#revenueGradient)"
+                                    />
+                                </AreaChart>
+                            </ChartContainer>
+                        ) : (
+                            <div className="h-[240px] md:h-[300px] flex items-center justify-center text-muted-foreground">
+                                No sales data for this period
+                            </div>
+                        )
+                    ) : (
+                        <div className="h-[240px] md:h-[300px] flex items-center justify-center">
+                            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                        </div>
+                    )}
                 </div>
+
+                {/* Order Status Distribution + Charts Row */}
+                {statusDistribution && statusDistribution.length > 0 && (
+                    <div className="w-full rounded-xl bg-card border border-border shadow-sm p-6">
+                        <div className="mb-6">
+                            <h2 className="text-foreground text-lg font-bold leading-tight">Order Status</h2>
+                            <p className="text-muted-foreground text-sm mt-1">
+                                Distribution of orders by current status
+                            </p>
+                        </div>
+                        <ChartContainer
+                            config={statusChartConfig}
+                            className="h-[200px] md:h-[240px] w-full"
+                        >
+                            <BarChart
+                                data={statusDistribution.map((d) => ({
+                                    ...d,
+                                    fill: STATUS_COLORS[d.status] || "hsl(var(--primary))",
+                                }))}
+                                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis
+                                    dataKey="status"
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickMargin={8}
+                                    tickFormatter={(v) => v.charAt(0).toUpperCase() + v.slice(1)}
+                                />
+                                <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                                <ChartTooltip
+                                    content={
+                                        <ChartTooltipContent
+                                            formatter={(value, name) =>
+                                                `${value} order${(value as number) !== 1 ? "s" : ""}`
+                                            }
+                                        />
+                                    }
+                                />
+                                <Bar dataKey="count" radius={[6, 6, 0, 0]} fill="hsl(var(--primary))">
+                                    {statusDistribution.map((entry) => (
+                                        <rect
+                                            key={entry.status}
+                                            fill={STATUS_COLORS[entry.status]}
+                                        />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ChartContainer>
+                    </div>
+                )}
 
                 {/* Bottom Section Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <RecentOrdersTable orders={recentOrders} />
-                    <LowStockAlerts items={lowStockItems} />
+                    {recentOrders ? (
+                        <RecentOrdersTable orders={recentOrders as RecentOrder[]} />
+                    ) : (
+                        <div className="lg:col-span-2 rounded-xl bg-card border border-border shadow-sm flex items-center justify-center h-[300px]">
+                            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                        </div>
+                    )}
+                    {lowStockProducts ? (
+                        <LowStockAlerts items={lowStockProducts as LowStockItem[]} />
+                    ) : (
+                        <div className="rounded-xl bg-card border border-border shadow-sm flex items-center justify-center h-[300px]">
+                            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                        </div>
+                    )}
                 </div>
             </div>
         </>

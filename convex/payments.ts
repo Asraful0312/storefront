@@ -137,7 +137,7 @@ export const createCheckoutSession = action({
         // 3. Calculate Shipping (skip for digital-only carts)
         let shippingCalc = { rate: 0, zoneName: "", deliveryTime: "" };
         if (!isAllDigital && args.shippingAddress) {
-            shippingCalc = await ctx.runQuery(api.shippingSettings.calculateRate, {
+            const calcResult = await ctx.runQuery(api.shippingSettings.calculateRate, {
                 countryCode: args.shippingAddress.country,
                 items: cartItems
                     .filter((item: any) => {
@@ -153,6 +153,9 @@ export const createCheckoutSession = action({
                     })),
                 subtotal: subtotal
             });
+            if (calcResult) {
+                shippingCalc = calcResult;
+            }
 
             if (isFreeShippingCoupon) {
                 shippingCalc.rate = 0;
@@ -374,3 +377,273 @@ export const fulfillOrder = internalMutation({
         }
     }
 });
+
+/**
+ * Place an order using an offline payment method (COD or Bank Transfer).
+ * Creates the order immediately with status "pending".
+ */
+export const placeOfflineOrder = action({
+    args: {
+        paymentMethod: v.union(v.literal("cod"), v.literal("bank_transfer")),
+        shippingAddress: v.optional(v.object({
+            street: v.string(),
+            city: v.string(),
+            state: v.string(),
+            zipCode: v.string(),
+            country: v.string(),
+        })),
+        couponCode: v.optional(v.string()),
+    },
+    handler: async (ctx, args): Promise<string> => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthenticated");
+
+        const user: any = await ctx.runQuery(internal.users.getUserByClerkId, { clerkId: identity.subject });
+        if (!user) throw new Error("User not found");
+
+        // 1. Get Cart
+        const cartItems: any[] = await ctx.runQuery(api.cart.get);
+        if (!cartItems || cartItems.length === 0) {
+            throw new Error("Cart is empty");
+        }
+
+        // 2. Check digital-only
+        const isAllDigital = cartItems.every((item: any) => {
+            const pType = (item.product as any).productType;
+            return pType === "digital" || pType === "gift_card";
+        });
+
+        // COD is not allowed for digital-only carts
+        if (args.paymentMethod === "cod" && isAllDigital) {
+            throw new Error("Cash on Delivery is not available for digital products.");
+        }
+
+        // Shipping address required for physical items
+        if (!isAllDigital && !args.shippingAddress) {
+            throw new Error("Shipping address is required for physical items");
+        }
+
+        // 3. Calculate subtotal
+        const subtotal = cartItems.reduce((sum: number, item: any) => sum + item.product.price * item.quantity, 0);
+
+        // 4. Coupon validation
+        let couponCode = args.couponCode;
+        if (!couponCode) {
+            const metadata: any = await ctx.runQuery(internal.cart.getMetadata, { userId: user._id });
+            if (metadata?.couponCode) {
+                couponCode = metadata.couponCode;
+            }
+        }
+
+        let discountAmount = 0;
+        let isFreeShippingCoupon = false;
+
+        if (couponCode) {
+            const validation: any = await ctx.runQuery(api.coupons.validateCoupon, {
+                code: couponCode,
+                purchaseAmount: subtotal,
+                userId: user._id,
+            });
+
+            if (validation.valid && validation.coupon) {
+                if (validation.coupon.discountType === "shipping") {
+                    isFreeShippingCoupon = true;
+                } else if (validation.coupon.discountType === "percentage") {
+                    discountAmount = Math.round((subtotal * validation.coupon.discountValue) / 100);
+                } else if (validation.coupon.discountType === "fixed") {
+                    discountAmount = validation.coupon.discountValue;
+                }
+            } else if (args.couponCode) {
+                throw new Error(validation.error || "Invalid coupon");
+            }
+        }
+
+        // 5. Calculate shipping
+        let shippingRate = 0;
+        if (!isAllDigital && args.shippingAddress) {
+            const shippingCalc: any = await ctx.runQuery(api.shippingSettings.calculateRate, {
+                countryCode: args.shippingAddress.country,
+                items: cartItems
+                    .filter((item: any) => {
+                        const pType = (item.product as any).productType;
+                        return !pType || pType === "physical";
+                    })
+                    .map((item: any) => ({
+                        weight: item.product.weight,
+                        dimensions: item.product.dimensions,
+                        quantity: item.quantity,
+                        shippingRateOverride: item.product.shippingRateOverride,
+                        isFreeShipping: item.product.isFreeShipping,
+                    })),
+                subtotal,
+            });
+            shippingRate = isFreeShippingCoupon ? 0 : shippingCalc.rate;
+        }
+
+        // 6. Calculate tax
+        const taxCalc: any = args.shippingAddress
+            ? await ctx.runQuery(api.tax.calculateTax, {
+                subtotal,
+                shipping: shippingRate,
+                countryCode: args.shippingAddress.country,
+                items: cartItems.map((item: any) => ({
+                    price: item.product.price,
+                    quantity: item.quantity,
+                    isTaxable: item.product.isTaxable,
+                    taxRateOverride: item.product.taxRateOverride,
+                })),
+            })
+            : { amount: 0, rate: 0, inclusive: false };
+
+        const taxAmount = taxCalc.inclusive ? 0 : taxCalc.amount;
+        const total = subtotal - discountAmount + shippingRate + taxAmount;
+
+        // 7. Create order via internal mutation
+        const orderId = await ctx.runMutation(internal.payments._fulfillOfflineOrder, {
+            userId: user._id,
+            paymentMethod: args.paymentMethod,
+            shippingAddress: args.shippingAddress,
+            subtotal,
+            shipping: shippingRate,
+            tax: taxAmount,
+            total,
+            customerEmail: identity.email || "",
+            isAllDigital,
+            firstName: user.firstName || "",
+            lastName: user.lastName || "",
+        });
+
+        return orderId;
+    },
+});
+
+/**
+ * Internal mutation to create an offline order and clear cart.
+ */
+export const _fulfillOfflineOrder = internalMutation({
+    args: {
+        userId: v.id("users"),
+        paymentMethod: v.union(v.literal("cod"), v.literal("bank_transfer")),
+        shippingAddress: v.optional(v.object({
+            street: v.string(),
+            city: v.string(),
+            state: v.string(),
+            zipCode: v.string(),
+            country: v.string(),
+        })),
+        subtotal: v.number(),
+        shipping: v.number(),
+        tax: v.number(),
+        total: v.number(),
+        customerEmail: v.string(),
+        isAllDigital: v.boolean(),
+        firstName: v.string(),
+        lastName: v.string(),
+    },
+    handler: async (ctx, args) => {
+        // Get cart items
+        const cartItems = await ctx.db
+            .query("cartItems")
+            .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+            .collect();
+
+        if (cartItems.length === 0) {
+            throw new Error("Cart empty during order creation");
+        }
+
+        // Save shipping address
+        let shippingAddressId = undefined;
+        if (!args.isAllDigital && args.shippingAddress) {
+            shippingAddressId = await ctx.db.insert("addresses", {
+                userId: args.userId,
+                label: "Order Address",
+                recipientName: `${args.firstName} ${args.lastName}`.trim(),
+                street: args.shippingAddress.street,
+                city: args.shippingAddress.city,
+                state: args.shippingAddress.state,
+                zipCode: args.shippingAddress.zipCode,
+                country: args.shippingAddress.country,
+                type: "home",
+                isDefault: false,
+            });
+        }
+
+        // Build order items
+        const generateGiftCode = () => {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            const segment = () =>
+                Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+            return `GIFT-${segment()}-${segment()}-${segment()}`;
+        };
+
+        const orderItems: any[] = [];
+        let hasOnlyDigital = true;
+
+        for (const item of cartItems) {
+            const product = await ctx.db.get(item.productId);
+            if (!product) continue;
+
+            let variant = null;
+            if (item.variantId) {
+                variant = await ctx.db.get(item.variantId);
+            }
+
+            const price = variant
+                ? product.basePrice + (variant.priceAdjustment || 0)
+                : product.basePrice;
+            const productType = product.productType || "physical";
+            if (productType === "physical") hasOnlyDigital = false;
+
+            const orderItem: any = {
+                productId: item.productId,
+                variantId: item.variantId,
+                name: product.name,
+                sku: variant?.sku || "N/A",
+                quantity: item.quantity,
+                price,
+                image: variant?.imageUrl || product.images[0]?.url,
+                productType,
+            };
+
+            if (productType === "digital" && product.digitalFiles && product.digitalFiles.length > 0) {
+                orderItem.downloadCount = 0;
+                orderItem.maxDownloads = product.maxDownloads;
+            }
+
+            // NOTE: For offline payment orders, we do NOT generate gift card codes yet.
+            // Codes will be generated when admin confirms payment (updateOrderStatus).
+            // The giftCardCode field is left undefined until then.
+
+            orderItems.push(orderItem);
+        }
+
+        // Generate order number
+        const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+        // Digital-only bank transfer orders are still "pending" until admin confirms
+        const initialStatus = "pending";
+
+        const orderId = await ctx.db.insert("orders", {
+            userId: args.userId,
+            orderNumber,
+            status: initialStatus,
+            items: orderItems,
+            subtotal: args.subtotal,
+            tax: args.tax,
+            shipping: args.shipping,
+            total: args.total,
+            shippingAddressId,
+            customerEmail: args.customerEmail || undefined,
+            paymentMethod: args.paymentMethod,
+            trackingNumber: undefined,
+        });
+
+        // Clear cart
+        for (const item of cartItems) {
+            await ctx.db.delete(item._id);
+        }
+
+        return orderId;
+    },
+});
+

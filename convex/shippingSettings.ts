@@ -12,31 +12,7 @@ export const get = query({
 
         if (!settings) {
             // Return defaults if not configured
-            return {
-                freeShippingThreshold: undefined,
-                zones: [
-                    {
-                        id: "domestic",
-                        name: "Domestic",
-                        regions: ["US", "CA"],
-                        rateType: "flat" as const,
-                        baseRate: 500, // $5.00
-                        deliveryTime: "3-5 Business Days",
-                    },
-                    {
-                        id: "international",
-                        name: "International",
-                        regions: ["*"],
-                        rateType: "flat" as const,
-                        baseRate: 2500, // $25.00
-                        deliveryTime: "7-14 Business Days",
-                    },
-                ],
-                dimWeightDivisor: 5000,
-                returnPolicy:
-                    "Free returns within 30 days of purchase. Items must be unused and in original packaging.",
-                warrantyInfo: undefined,
-            };
+            return null
         }
 
         return settings;
@@ -51,14 +27,7 @@ export const getZoneForCountry = query({
 
         if (!settings) {
             // Return default domestic zone
-            return {
-                id: "domestic",
-                name: "Domestic",
-                regions: ["US", "CA"],
-                rateType: "flat" as const,
-                baseRate: 500,
-                deliveryTime: "3-5 Business Days",
-            };
+            return null
         }
 
         // Find matching zone
@@ -147,16 +116,10 @@ export const calculateRate = query({
                 }
             }
             zone = zone || settings.zones[settings.zones.length - 1];
-        } else {
-            // Default zone
-            zone = {
-                id: "domestic",
-                name: "Domestic",
-                regions: ["US", "CA"],
-                rateType: "flat" as const,
-                baseRate: 500,
-                deliveryTime: "3-5 Business Days",
-            };
+        }
+
+        if (!settings || !zone) {
+            return null;
         }
 
         const dimDivisor = settings?.dimWeightDivisor || 5000;

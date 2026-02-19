@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronDown, Filter, Plus, ArrowLeft, PackageX } from "lucide-react";
 import { Header, Footer, Breadcrumb } from "@/components/storefront";
 import { AccountSidebar, Pagination } from "@/components/account";
 import { ReturnRequestCard } from "@/components/account/ReturnRequestCard";
-import type { ReturnRequest } from "@/components/account/returns-types";
+import type { ReturnRequest, ReturnStatus } from "@/components/account/returns-types";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -14,90 +15,16 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-// Sample returns data
-const sampleReturns: ReturnRequest[] = [
-    {
-        id: "1",
-        orderId: "49230",
-        orderDate: "Oct 24, 2023",
-        returnDate: "Nov 02, 2023",
-        status: "processing",
-        reason: "Item arrived damaged - packaging was crushed during shipping",
-        refundAmount: 45.0,
-        refundMethod: "Original Payment Method",
-        items: [
-            {
-                id: "1",
-                name: "Ceramic Vase",
-                image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAcvPsLKBc5Pdw7aejpfykQfUnSg7HCp9rXfLBSMQitd_16N-NfjjgX74HwThu_xqy1Hprn_N3brhpVE3umeoDTeOxiY7nFaAFHU1HHj9HoFduiCDpk1RogXLAH4-Rf5cjKrnVLOd3qf7WYuIm4CC_bIr9e_zM8TBx3eTaHqCuQzc--uQXIxKScf1ZvfkmtgOHlHlbBdCYdTsqHKySsrFolvl8qqVrw1c_XXa9h6U_qaXzlN4e3dpxTKxgk9Y3G70iN9Z0qXAUXOdA",
-                quantity: 1,
-                price: 45.0,
-            },
-        ],
-    },
-    {
-        id: "2",
-        orderId: "48102",
-        orderDate: "Sep 15, 2023",
-        returnDate: "Sep 22, 2023",
-        status: "completed",
-        reason: "Wrong size - ordered Medium but received Small",
-        refundAmount: 89.0,
-        refundMethod: "Store Credit",
-        items: [
-            {
-                id: "2",
-                name: "Linen Throw Pillow",
-                image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBBqnTCYwj4Q8drHBz_VKzcQaHZR76-hsl17DIWdyG5E8y_RPjVKBsWNCjcZsaonGqk6DU-jtcoXh2oDgHDRHckdx6fUILPY7lZue_mm0sB_uYznTDTa_HBMwJZKTSN857NJjEAHH6kpSvpLrX5h0uXjDLum44YriTJ7JzwdkSSafrAw2g3G3LnpAJWeOQ2V0yQtUj2Jhr6YrCa6dJqKx5OCrjob13AObOknO9TYe7-OgtwVT_LyvoE76HEHyN0eYlNZSgLzp8IOrw",
-                quantity: 2,
-                price: 44.5,
-            },
-        ],
-    },
-    {
-        id: "3",
-        orderId: "47229",
-        orderDate: "Aug 30, 2023",
-        returnDate: "Sep 05, 2023",
-        status: "rejected",
-        reason: "Changed my mind - no longer need the product",
-        refundAmount: 120.0,
-        refundMethod: "N/A",
-        items: [
-            {
-                id: "3",
-                name: "Acacia Serving Bowl",
-                image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBnJLLCGQBEO-jvKYpm6-o8b9844ivE3-QoE4gytQwqSU51vwgvtxaa19p5FMEDFRrWZqgXkiBMhTbsrV-6BUFxM2dbYqGCezTRFcyBmOF7LJ03_eb_gG0CjxFjszLXekIi3ppWjoV_qULBqetE_xwd4lU-XlZClsMSznK7S-CaeD-z3P4HboVpCxxU7zzPiW--TrAS00_kUoFTAHS7jC7Oq5L_4Os5aZZVOppg5LG4B-VfonRFd2k68_3P2lcKn_S0FPD6Wec2lnQ",
-                quantity: 1,
-                price: 120.0,
-            },
-        ],
-    },
-    {
-        id: "4",
-        orderId: "46890",
-        orderDate: "Aug 20, 2023",
-        returnDate: "Aug 28, 2023",
-        status: "pending",
-        reason: "Product does not match description - color is different from photos",
-        refundAmount: 55.0,
-        refundMethod: "Original Payment Method",
-        items: [
-            {
-                id: "4",
-                name: "Nordic Glass Carafe",
-                image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAWhcpqd-lpQ_KkORFrzcfTkMsi10hclMUyztZeT-BahPR89hEXDmbkP1limlTDnHBHgXxpuvXb1_KTIsLTqnX6Oy5oZi62pAsCr2zv8oVsM0ixh1ggsGC0B6zUI5BzF1B-h78mgaYpO7hd9ftnnTUkiQZMjaEaxzELF8DMf_wq-5XgNn7WJCpjMghQez0PUyX602fCd7wPQilodPUL9NkIv9gg2OGXDLKnXxOaa0V80r8yblCSBk8-PLQFaHGB614UMjpscxGoODc",
-                quantity: 1,
-                price: 55.0,
-            },
-        ],
-    },
-];
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { formatDate } from "@/lib/utils";
 
 export default function ReturnsPage() {
+    const router = useRouter();
     const [currentPage, setCurrentPage] = useState(1);
     const [filterStatus, setFilterStatus] = useState<string>("all");
+
+    const returns = useQuery(api.returns.listMyReturns);
 
     const breadcrumbItems = [
         { label: "Home", href: "/" },
@@ -106,18 +33,47 @@ export default function ReturnsPage() {
     ];
 
     const handleViewDetails = (id: string) => {
-        console.log("View return details:", id);
+        router.push(`/account/returns/${id}`);
     };
 
     const handleStartReturn = () => {
-        console.log("Start new return");
+        router.push("/account/returns/new");
     };
+
+    // Transform backend data to frontend model
+    const formattedReturns: ReturnRequest[] = returns?.map((r) => ({
+        id: r._id,
+        orderId: r.orderId, // Should format if it's an ID
+        orderDate: r.orderDate ? formatDate(r.orderDate) : "N/A",
+        returnDate: formatDate(r.submissionDate),
+        status: r.status as ReturnStatus,
+        reason: r.reason,
+        refundAmount: r.refundAmount || 0, // Should calculate or use estimated
+        refundMethod: r.refundMethod,
+        items: r.items.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            image: item.image,
+            quantity: item.quantity,
+            price: item.price / 100,
+        })),
+    })) || [];
 
     // Filter returns based on status
     const filteredReturns =
         filterStatus === "all"
-            ? sampleReturns
-            : sampleReturns.filter((r) => r.status === filterStatus);
+            ? formattedReturns
+            : formattedReturns.filter((r) => r.status === filterStatus);
+
+    if (returns === undefined) {
+        return (
+            <>
+                <Header />
+                <div className="min-h-screen flex items-center justify-center">Loading...</div>
+                <Footer />
+            </>
+        );
+    }
 
     return (
         <>
@@ -131,7 +87,7 @@ export default function ReturnsPage() {
 
                 <div className="flex flex-col lg:flex-row gap-8 lg:gap-10">
                     {/* Sidebar */}
-                    <AccountSidebar userName="Alex" />
+                    <AccountSidebar userName="User" /> 
 
                     {/* Main Content */}
                     <main className="flex-1 min-w-0">
@@ -146,8 +102,8 @@ export default function ReturnsPage() {
                             <div className="flex flex-wrap gap-2">
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button className="gap-2">
-                                            All Returns
+                                        <Button className="gap-2" variant="outline">
+                                            {filterStatus === "all" ? "All Returns" : filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)}
                                             <ChevronDown className="size-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
@@ -157,6 +113,9 @@ export default function ReturnsPage() {
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => setFilterStatus("pending")}>
                                             Pending
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setFilterStatus("approved")}>
+                                            Approved
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => setFilterStatus("processing")}>
                                             Processing
@@ -170,7 +129,7 @@ export default function ReturnsPage() {
                                     </DropdownMenuContent>
                                 </DropdownMenu>
 
-                                <Button variant="outline" onClick={handleStartReturn} className="gap-2">
+                                <Button onClick={handleStartReturn} className="gap-2">
                                     <Plus className="size-4" />
                                     Start a Return
                                 </Button>
@@ -193,18 +152,20 @@ export default function ReturnsPage() {
                                 <PackageX className="size-16 text-muted-foreground mb-4" />
                                 <h3 className="text-xl font-bold text-foreground mb-2">No returns found</h3>
                                 <p className="text-muted-foreground mb-6 max-w-md">
-                                    You don't have any return requests matching this filter.
+                                    {filterStatus === "all" 
+                                        ? "You haven't made any return requests yet."
+                                        : `You don't have any returns with status "${filterStatus}".`
+                                    }
                                 </p>
-                                <Link href="/account/orders">
-                                    <Button variant="outline" className="gap-2">
-                                        <ArrowLeft className="size-4" />
-                                        View Orders
-                                    </Button>
-                                </Link>
+                                <Button variant="outline" className="gap-2" onClick={handleStartReturn}>
+                                    <Plus className="size-4" />
+                                    Start a Return
+                                </Button>
                             </div>
                         )}
 
-                        {/* Pagination */}
+                        {/* Pagination - Placeholder for now as backend pagination isn't implemented in listMyReturns yet */}
+                        {/* 
                         {filteredReturns.length > 0 && (
                             <div className="mt-10">
                                 <Pagination
@@ -213,7 +174,8 @@ export default function ReturnsPage() {
                                     onPageChange={setCurrentPage}
                                 />
                             </div>
-                        )}
+                        )} 
+                        */}
 
                         {/* Help Section */}
                         <div className="mt-10 p-6 bg-secondary/30 rounded-xl border border-border text-center">
